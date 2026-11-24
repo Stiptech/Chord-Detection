@@ -1,0 +1,80 @@
+/* Lembar chord: tampilan seperti lembar cetak lagu rohani. Chord merah tebal di atas lirik, huruf monospace supaya sejajar. */
+:root { --chord: #b3261e; --sheet-bg: #ffffff; --sheet-text: #1c1b18; --pill: #c0392b; --pill-text: #ffffff; }
+@media (prefers-color-scheme: dark) {
+  :root { --chord: #ff8c82; --sheet-bg: #1e1d18; --sheet-text: #efede6; --pill: #b3261e; --pill-text: #ffffff; }
+}
+
+.sheet-tools { display: grid; gap: 14px; margin-bottom: 12px; }
+.sheet-tools .row { margin-top: 2px; }
+
+.sheet {
+  --sheet-size: 17px;
+  background: var(--sheet-bg); color: var(--sheet-text);
+  border: 1px solid var(--line); border-radius: var(--radius); padding: 16px;
+  font: 600 var(--sheet-size)/1.35 ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, "Courier New", monospace;
+  overflow-x: auto; -webkit-overflow-scrolling: touch; min-height: 120px;
+}
+.sheet-key { font-weight: 800; margin-bottom: 14px; }
+.sheet-key b { color: var(--chord); }
+.sec { margin: 22px 0 8px; }
+.sec:first-of-type { margin-top: 6px; }
+.sec-pill {
+  display: inline-block; padding: 3px 18px 4px; border-radius: 6px; background: var(--pill); color: var(--pill-text);
+  font: 800 .88em/1.3 ui-monospace, "Cascadia Mono", Menlo, Consolas, monospace; box-shadow: 0 3px 0 rgba(0, 0, 0, .28);
+}
+.bars, .cl, .wl { margin: 0; white-space: pre; font: inherit; }
+.bars { color: var(--chord); font-weight: 800; margin-bottom: 4px; }
+.lyric { margin: 0 0 10px; break-inside: avoid; }
+.cl { color: var(--chord); font-weight: 800; min-height: 1.35em; }
+.wl { font-weight: 600; }
+.lyric.nosync .cl { min-height: 0; }
+.empty-sheet { font: 400 1rem/1.5 system-ui, sans-serif; color: var(--muted); }
+.empty-sheet .btn { margin-top: 10px; }
+
+/* ----- Susun & sinkron ----- */
+.lyrics { width: 100%; font: 500 .95rem/1.5 ui-monospace, Menlo, Consolas, monospace; resize: vertical; min-height: 220px; }
+code { font: .9em ui-monospace, Menlo, Consolas, monospace; background: color-mix(in srgb, var(--line) 50%, transparent); padding: 1px 5px; border-radius: 5px; }
+.card + .card { margin-top: 12px; }
+.card .row { margin-top: 10px; }
+
+.synclist { display: grid; gap: 6px; margin-top: 10px; }
+.sync-sec { margin-top: 10px; font-weight: 800; color: var(--pill); }
+.sync-row { border: 1px solid var(--line); border-radius: 10px; background: var(--bg); overflow: hidden; }
+.sync-row.done { border-color: color-mix(in srgb, var(--ok) 55%, var(--line)); }
+.sync-row.next { outline: 3px solid var(--warn); outline-offset: 1px; }
+.sync-row.now { background: color-mix(in srgb, var(--accent) 18%, var(--bg)); }
+.sync-pick {
+  display: flex; align-items: baseline; gap: 10px; width: 100%; min-height: 44px; padding: 8px 12px; text-align: left;
+  border: 0; background: transparent; color: var(--text); font: inherit; cursor: pointer;
+}
+.sync-time { flex: none; min-width: 3.6em; font-variant-numeric: tabular-nums; color: var(--muted); font-size: .9rem; }
+.sync-row.done .sync-time { color: var(--ok); font-weight: 700; }
+.sync-text { overflow-wrap: anywhere; }
+.sync-ctl { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 10px 10px; }
+.sync-ctl .btn { min-width: 44px; padding: 6px 10px; }
+
+.tapbar { display: grid; gap: 6px; margin-bottom: 6px; }
+.tapnext { font-size: .92rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tapnext strong { color: var(--text); }
+.tapbar .row { display: grid; grid-template-columns: 2fr 1fr; gap: 10px; margin: 0; }
+.tapbar .tbtn { min-height: 58px; font-size: 1.1rem; }
+
+/* dock menempel saat menyusun (sama seperti saat mode edit di pemutar) */
+.syncing .dock {
+  position: sticky; bottom: 0; z-index: 6; margin: 0 -16px 0; padding: 8px 16px calc(8px + env(safe-area-inset-bottom));
+  background: var(--bg); border-top: 1px solid var(--line); box-shadow: 0 -6px 14px rgba(0, 0, 0, .18);
+}
+.syncing .dock .seekrow { margin: 2px 0 6px; }
+.syncing .dock .transport { margin-bottom: 0; }
+
+/* ----- Cetak / PDF: putih, hitam, tanpa kontrol ----- */
+@media print {
+  :root { --chord: #a00000; --sheet-bg: #fff; --sheet-text: #000; --pill: #a00000; }
+  body { background: #fff; }
+  .noprint, .bar { display: none !important; }
+  main { max-width: none; padding: 0; }
+  .sheet { border: 0; padding: 0; font-size: 12pt; overflow: visible; color: #000; background: #fff; }
+  .sec { break-after: avoid; }
+  .sec-pill { box-shadow: none; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .cl, .bars, .sheet-key b { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

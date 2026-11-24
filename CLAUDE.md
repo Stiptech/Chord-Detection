@@ -15,10 +15,10 @@ Spesifikasi awal ada di `chord-finder-prompt.md` (sebagian sudah usang: arsitekt
 - Jangan push ke GitHub atau mengubah arsitektur tanpa persetujuan (push ke `main` memicu deploy Netlify).
 
 ## Peta berkas `web/js/`
-`app.js` daftar lagu · `player.js` pemutar · `editor.js` + `edit-logic.js` koreksi · `stats.js` + `evaluate.js` statistik · `baseline.js`, `chroma.js`, `fft.js`,
+`app.js` daftar lagu · `player.js` pemutar · `sheet.js` + `sheet-logic.js` lembar chord (lirik + ketuk-sinkron) · `editor.js` + `edit-logic.js` koreksi · `stats.js` + `evaluate.js` statistik · `baseline.js`, `chroma.js`, `fft.js`,
 `config.js` detector · `labels.js` .lab/Harte/validasi · `transpose.js` transpose + key · `audio.js`, `analysis.js`, `worker.js` dekode + Web Worker ·
 `api.js`, `supabase.js`, `supabase-config.js` data · `dom.js` pembuat elemen · `pwa.js` + `sw.js` service worker.
-Logika murni dipisah dari DOM (`edit-logic.js`, `player-logic.js`, `evaluate.js`, `transpose.js`) supaya bisa dites di Node.
+Logika murni dipisah dari DOM (`edit-logic.js`, `player-logic.js`, `evaluate.js`, `transpose.js`, `sheet-logic.js`) supaya bisa dites di Node.
 
 ## Prinsip kerja
 - Sederhana dan mudah diubah. Frontend vanilla tanpa build. Hasil mesin hanyalah tebakan awal; koreksi manual adalah alur utama.

@@ -4,7 +4,7 @@ Web statis (jalan sepenuhnya di browser) untuk mendeteksi chord dari file audio/
 mengoreksi hasilnya, dan mengukur seberapa benar mesinnya. Data (lagu, audio, label) disimpan di Supabase sehingga sama di semua perangkat.
 Disajikan oleh Netlify dari folder `web/`: tanpa server Python, tanpa build, tanpa framework.
 
-**Status:** semua fase inti selesai (engine JS, penyimpanan, pemutar, editor koreksi, evaluasi, PWA). Detector pretrained (Fase 6)
+**Status:** semua fase inti selesai (engine JS, penyimpanan, pemutar, editor koreksi, evaluasi, PWA, lembar chord). Detector pretrained (Fase 6)
 **belum dikerjakan** dan hanya akan dibuat bila diminta. Fitur tempel link YouTube dan backend FastAPI pernah ada, lalu dihapus
 (masih ada di riwayat git, commit `3448cc8` dan sebelumnya).
 
@@ -18,7 +18,8 @@ Di Chrome/Android/desktop ada tombol Pasang di bilah alamat.
    Tersedia juga **Analisis ulang**, **Ekspor .lab**, **Impor .lab** (jadi versi koreksi), **Hapus**, dan **Ekspor semua label (JSON)** untuk cadangan.
 2. **Pemutar** (`player.html`, tombol **▶ Buka pemutar**): lihat bagian di bawah.
 3. **Mode edit** di pemutar untuk mengoreksi chord.
-4. **Statistik** (`stats.html`, tombol 📊): seberapa benar mesin dibanding koreksimu.
+4. **Lembar chord** (`sheet.html`, tombol 📄): chord di atas lirik seperti lembar cetak.
+5. **Statistik** (`stats.html`, tombol 📊): seberapa benar mesin dibanding koreksimu.
 
 ### Pemutar
 
@@ -41,6 +42,29 @@ Koreksi disimpan sebagai versi `corrected` dan **tidak pernah menimpa** hasil me
   **Kembalikan ke hasil mesin** (konfirmasi, bisa diurungkan). **⇄ Bandingkan dengan mesin**: dua baris sejajar, segmen berbeda diberi warna.
 - Mode edit menampilkan chord **asli** (tanpa transpose/capo). Panel editor muncul tepat di bawah lini waktu, dan **dock** (posisi, tombol putar, ±5 detik, "Sekarang: …") menempel di dasar layar sambil mengedit, jadi kamu tidak perlu menggulir ke atas untuk memutar. Jenis chord yang jarang dipakai dilipat di "Jenis lain".
   Tidak ada penguncian antar perangkat: bila dua perangkat mengedit lagu yang sama, yang menyimpan terakhir menang.
+
+### Lembar chord (seperti lembar cetak)
+
+Tombol **📄 Lembar chord** di pemutar (atau **📄 Lembar** di kartu lagu). Hasilnya teks monospace seperti lembar lagu rohani: baris `Key: F`, lencana bagian
+(Intro, Verse 1, Chorus, Instrumen, …), chord merah di atas lirik, dan bagian tanpa lirik sebagai deretan chord (`| C  G  Am  F |`, empat chord per baris).
+
+**Menyusunnya** (tab **✎ Susun lirik & sinkron**):
+1. **Tempel lirik**, satu baris lirik per baris. Judul bagian boleh ditulis sebagai baris sendiri: `Intro`, `Verse 1`, `Chorus`, `Instrumen`, `Bridge`, atau `[Judul bebas]`.
+   Bagian yang tidak punya lirik di bawahnya (Intro, Instrumen) menjadi deretan chord. Tekan **Terapkan lirik**.
+2. **Ketuk waktunya:** putar lagu, lalu tekan **⏱ Mulai di sini** (atau spasi/Enter di laptop) tepat saat baris yang disorot mulai dinyanyikan. Waktu ketuk dikurangi 0,25 detik
+   (waktu reaksi). Tiap baris punya ▶ (putar dari sini), ±0,1, "= posisi", dan ✕ untuk koreksi halus; **Urungkan** membatalkan ketukan terakhir.
+3. Buka tab **📄 Lembar**. Lirik dan waktu tersimpan otomatis (kolom `songs.sheet`), jadi sama di semua perangkat.
+
+**Aturan penempatan:** chord diambil dari versi koreksi (atau hasil mesin bila belum dikoreksi). Tiap chord diletakkan di awal kata terdekat menurut waktunya di dalam baris;
+chord pertama di awal baris; chord yang saling berdekatan didorong ke kanan supaya tidak menimpa. Chord hanya dihitung bila berbunyi minimal 0,3 detik di dalam baris
+(batas segmen deteksi sering meleset puluhan milidetik), sehingga chord yang berganti sesaat sebelum baris berikutnya tampil di baris berikutnya. `N` dilewati.
+
+**Di tab Lembar:** transpose, capo, dan ejaan ♯/♭ (dibagi dengan pemutar, jadi lembar langsung mengikuti), ukuran huruf, **Salin teks**, **Unduh .txt**, dan
+**Cetak / simpan PDF** (tampilan cetak putih-hitam tanpa kontrol).
+
+**Batasan yang jujur:** penempatan chord memakai pembagian waktu *proporsional* di dalam baris, jadi bisa meleset satu-dua kata bila kata-katanya tidak merata waktunya;
+belum ada geser manual per chord (solusinya: salin teks lalu rapikan, atau pecah baris panjang jadi dua). Bar tanpa lirik tidak punya palang birama atau `•` karena aplikasi
+belum mendeteksi ketukan. Lembar hanya sebagus label chordnya: koreksi chord dulu di mode edit.
 
 ### Statistik
 
@@ -85,6 +109,7 @@ tetap butuh internet.
 
 ## Format data
 - Label `.lab`: `start<TAB>end<TAB>chord` per baris. Notasi chord: `C Dm Dsus2 Dsus4 C7 Cmaj7 Am7 Cadd9 G/B N`. Konversi Harte dua arah ada di `web/js/labels.js` dan `app/labels.py`.
+- Lembar chord disimpan di kolom `songs.sheet` (JSON: `{v, lyrics, times}`; `times` = detik awal tiap baris/bagian, dikunci oleh jenis|teks|urutan kemunculan).
 - Di database tiap lagu punya beberapa versi label: `auto` (analisis terakhir; tidak pernah ditimpa koreksi), nama detector (`baseline`), dan `corrected` (koreksimu).
 
 ## Detector (JavaScript, `web/js/`)

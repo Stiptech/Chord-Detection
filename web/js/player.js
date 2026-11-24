@@ -458,6 +458,7 @@ function fail(message) {
     st.key = estimateKey(st.segs);
     loadPrefs();
     $('songTitle').textContent = song.name;
+    $('sheetLink').href = `sheet.html?id=${song.id}`;
     document.title = `${song.name} · Chord Finder`;
     $('versionInfo').textContent = version === 'corrected' ? 'Versi koreksi' : 'Hasil mesin (belum dikoreksi)';
 

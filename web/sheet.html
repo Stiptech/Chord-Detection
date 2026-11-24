@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#f6f5f1" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#14130f" media="(prefers-color-scheme: dark)">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Chord Finder">
+  <title>Lembar chord · Chord Finder</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/player.css">
+  <link rel="stylesheet" href="css/sheet.css">
+</head>
+<body>
+  <header class="bar noprint">
+    <a class="btn small" id="backLink" href="index.html">← Pemutar</a>
+    <h1 id="songTitle" class="ptitle">Memuat…</h1>
+  </header>
+
+  <main>
+    <p id="stateMsg" class="muted">Memuat…</p>
+    <p id="errorMsg" class="error" role="alert" hidden></p>
+
+    <section id="sheetView" hidden>
+      <div class="modebar noprint" role="group" aria-label="Tampilan">
+        <button id="tabSheet" class="btn small" type="button" aria-pressed="true">📄 Lembar</button>
+        <button id="tabEdit" class="btn small" type="button" aria-pressed="false">✎ Susun lirik &amp; sinkron</button>
+      </div>
+
+      <!-- ===== LEMBAR ===== -->
+      <section id="paneSheet">
+        <div class="card sheet-tools noprint">
+          <div class="opt">
+            <span class="opt-label">Transpose</span>
+            <div class="stepper">
+              <button id="trDown" class="btn small" type="button" aria-label="Turun satu semiton">−</button>
+              <output id="trVal" aria-live="polite">0</output>
+              <button id="trUp" class="btn small" type="button" aria-label="Naik satu semiton">+</button>
+              <button id="trReset" class="btn small" type="button">Reset</button>
+            </div>
+          </div>
+          <div class="opt">
+            <span class="opt-label">Capo</span>
+            <div class="stepper">
+              <button id="capoDown" class="btn small" type="button" aria-label="Capo turun satu fret">−</button>
+              <output id="capoVal" aria-live="polite">0</output>
+              <button id="capoUp" class="btn small" type="button" aria-label="Capo naik satu fret">+</button>
+            </div>
+          </div>
+          <div class="opt">
+            <span class="opt-label">Ejaan</span>
+            <div id="spellSeg" class="seg" role="group" aria-label="Ejaan sharp atau flat"></div>
+          </div>
+          <div class="opt">
+            <span class="opt-label">Ukuran huruf</span>
+            <div class="stepper">
+              <button id="fsDown" class="btn small" type="button" aria-label="Perkecil huruf">A−</button>
+              <output id="fsVal" aria-live="polite">17</output>
+              <button id="fsUp" class="btn small" type="button" aria-label="Perbesar huruf">A+</button>
+            </div>
+          </div>
+          <div class="row">
+            <button id="copyBtn" class="btn small" type="button">Salin teks</button>
+            <button id="dlBtn" class="btn small" type="button">Unduh .txt</button>
+            <button id="printBtn" class="btn small primary" type="button">Cetak / simpan PDF</button>
+          </div>
+        </div>
+
+        <p id="sheetHint" class="muted noprint" hidden></p>
+        <article id="sheetOut" class="sheet" aria-label="Lembar chord"></article>
+      </section>
+
+      <!-- ===== SUSUN & SINKRON ===== -->
+      <section id="paneEdit" hidden class="noprint">
+        <div class="card">
+          <label class="opt-label" for="lyrics">1. Tempel lirik</label>
+          <p class="muted small-note">Satu baris lirik per baris. Judul bagian boleh ditulis sebagai baris sendiri: <code>Intro</code>, <code>Verse 1</code>, <code>Chorus</code>,
+            <code>Instrumen</code>, <code>Bridge</code>, atau <code>[Judul bebas]</code>. Bagian yang tidak punya lirik (Intro, Instrumen) tampil sebagai deretan chord.</p>
+          <textarea id="lyrics" class="field lyrics" rows="14" spellcheck="false" placeholder="Intro&#10;&#10;Verse 1&#10;Ya Tuhan tiap jam&#10;Ku memerlukanMu&#10;&#10;Chorus&#10;Setiap jam ya Tuhan&#10;Dikau kuperlukan"></textarea>
+          <div class="row">
+            <button id="applyLyrics" class="btn small primary" type="button">Terapkan lirik</button>
+            <span id="saveState" class="savestate muted" role="status" aria-live="polite">Belum ada perubahan</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <span class="opt-label">2. Sinkron: ketuk saat tiap baris mulai dinyanyikan</span>
+          <p class="muted small-note">Putar lagunya, lalu tekan <strong>⏱ Mulai di sini</strong> (atau spasi) tepat ketika baris yang disorot mulai dinyanyikan.
+            Waktu ketuk dikurangi 0,25 detik untuk waktu reaksi; koreksi halus pakai tombol ±0,1 di tiap baris.
+            Bagian chord saja (Intro/Instrumen) ditandai di awal bagian.</p>
+          <div id="syncList" class="synclist"></div>
+        </div>
+      </section>
+
+      <!-- Dock: tombol ketuk + posisi + putar, menempel di bawah layar saat menyusun -->
+      <div id="dock" class="dock noprint" hidden>
+        <div class="tapbar">
+          <div class="tapnext">Berikutnya: <strong id="tapNext">–</strong></div>
+          <div class="row">
+            <button id="tapBtn" class="btn primary tbtn" type="button">⏱ Mulai di sini</button>
+            <button id="tapUndo" class="btn tbtn" type="button">↶ Urungkan</button>
+          </div>
+        </div>
+        <div class="seekrow">
+          <span id="curTime" class="time">0:00</span>
+          <input id="seek" type="range" min="0" max="100" step="0.1" value="0" aria-label="Posisi lagu">
+          <span id="totTime" class="time">0:00</span>
+        </div>
+        <div class="transport">
+          <button id="back5" class="btn tbtn" type="button">−5 dtk</button>
+          <button id="playBtn" class="btn primary tbtn play" type="button">▶ Putar</button>
+          <button id="fwd5" class="btn tbtn" type="button">+5 dtk</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <audio id="audio" preload="auto" playsinline></audio>
+  <div id="toast" class="toast noprint" role="status" aria-live="polite" hidden></div>
+  <script type="module" src="js/sheet.js"></script>
+  <script type="module" src="js/pwa.js"></script>
+</body>
+</html>

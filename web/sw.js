@@ -7,12 +7,12 @@
 const CACHE = 'chordfinder-shell-v1'; // naikkan nomor ini bila perlu membuang cache lama
 
 const SHELL = [
-  './', 'index.html', 'player.html', 'stats.html', 'manifest.webmanifest', 'icon.svg',
+  './', 'index.html', 'player.html', 'sheet.html', 'stats.html', 'manifest.webmanifest', 'icon.svg',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png',
-  'css/style.css', 'css/player.css', 'css/stats.css',
+  'css/style.css', 'css/player.css', 'css/sheet.css', 'css/stats.css',
   'js/analysis.js', 'js/api.js', 'js/app.js', 'js/audio.js', 'js/baseline.js', 'js/chroma.js', 'js/config.js',
   'js/dom.js', 'js/edit-logic.js', 'js/editor.js', 'js/evaluate.js', 'js/fft.js', 'js/labels.js', 'js/player-logic.js',
-  'js/player.js', 'js/pwa.js', 'js/stats.js', 'js/supabase-config.js', 'js/supabase.js', 'js/transpose.js', 'js/worker.js',
+  'js/player.js', 'js/pwa.js', 'js/sheet-logic.js', 'js/sheet.js', 'js/stats.js', 'js/supabase-config.js', 'js/supabase.js', 'js/transpose.js', 'js/worker.js',
 ];
 
 self.addEventListener('install', (event) => {

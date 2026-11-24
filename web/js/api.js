@@ -96,6 +96,12 @@ export function createApi(sb, { bucket = 'audio' } = {}) {
       return data; // null bila tidak ada
     },
 
+    /** Simpan lembar chord ({v, lyrics, times}) lagu ini. */
+    async saveSheet(id, sheet) {
+      const { error } = await sb.from('songs').update({ sheet, updated_at: new Date().toISOString() }).eq('id', id);
+      check(error);
+    },
+
     async updateSong(id, patch) {
       const { data, error } = await sb.from('songs')
         .update({ ...patch, updated_at: new Date().toISOString() }).eq('id', id).select().single();
@@ -163,7 +169,7 @@ export function createApi(sb, { bucket = 'audio' } = {}) {
     /** Cadangan semua lagu + label sebagai satu objek JSON (audio tidak ikut; file aslinya milikmu). */
     async exportAll() {
       const [songs, labels] = await Promise.all([
-        sb.from('songs').select('id,name,audio_hash,duration_sec,detector,created_at').order('created_at'),
+        sb.from('songs').select('id,name,audio_hash,duration_sec,detector,created_at,sheet').order('created_at'),
         sb.from('label_versions').select('song_id,version,segments,updated_at'),
       ]);
       check(songs.error);

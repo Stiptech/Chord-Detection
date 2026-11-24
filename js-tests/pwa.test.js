@@ -55,7 +55,7 @@ test('service worker: hanya menyentuh GET dari situs sendiri (Supabase/CDN/Range
 
 test('setiap halaman: memasang manifest, ikon, pwa.js, dan tak ada tautan lokal yang putus', () => {
   const pages = files.filter((f) => f.endsWith('.html'));
-  assert.deepEqual(pages.sort(), ['index.html', 'player.html', 'stats.html']);
+  assert.deepEqual(pages.sort(), ['index.html', 'player.html', 'sheet.html', 'stats.html']);
   for (const page of pages) {
     const html = read(page);
     assert.match(html, /rel="manifest" href="manifest\.webmanifest"/, page);

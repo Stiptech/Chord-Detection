@@ -105,6 +105,7 @@ function songCard(song) {
     stale && h('p', { class: 'note error' }, 'Analisis terputus (halaman ditutup). Analisis ulang untuk melanjutkan.'),
     h('div', { class: 'actions' },
       !busy && song.status === 'ready' && h('a', { class: 'btn small primary', href: `player.html?id=${song.id}` }, '▶ Buka pemutar'),
+      !busy && song.status === 'ready' && h('a', { class: 'btn small', href: `sheet.html?id=${song.id}` }, '📄 Lembar'),
       !busy && song.status === 'ready' && h('button', { class: 'btn small', type: 'button', onclick: () => toggleResult(song) }, isOpen ? 'Sembunyikan chord' : 'Lihat chord'),
       !busy && h('button', { class: 'btn small', type: 'button', onclick: () => reanalyze(song) }, song.status === 'uploaded' ? 'Analisis' : 'Analisis ulang'),
       !busy && song.status === 'ready' && h('button', { class: 'btn small', type: 'button', onclick: () => exportLab(song) }, 'Ekspor .lab'),

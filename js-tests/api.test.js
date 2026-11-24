@@ -165,3 +165,13 @@ test('listAllLabels mengambil semua baris label', async () => {
   assert.deepEqual(await createApi(sb).listAllLabels(), [{ song_id: 's1', version: 'auto', segments: [] }]);
   assert.equal(sb.calls[0].table, 'label_versions');
 });
+
+test('saveSheet memperbarui kolom sheet lagu itu saja', async () => {
+  const sb = fakeClient();
+  const sheet = { v: 1, lyrics: 'Verse 1\nsatu', times: { 'l|satu|0': 3.2 } };
+  await createApi(sb).saveSheet('s1', sheet);
+  const call = sb.calls[0];
+  assert.equal(call.table, 'songs');
+  assert.deepEqual(op(call, 'update')[0].sheet, sheet);
+  assert.deepEqual(op(call, 'eq'), ['id', 's1']);
+});
