@@ -10,6 +10,10 @@ Status: Fase 1, 2, 2b (Python) selesai. **Fase A (engine JavaScript) selesai**; 
 
 ## Setup Supabase (database + penyimpanan audio lintas perangkat)
 
+**Status:** project `chord-finder` (Singapore) sudah dibuat dan skemanya terpasang (RLS diuji: tanpa login = 0 baris,
+pengguna lain = 0 baris). URL dan publishable key ada di `web/js/supabase-config.js`. Yang tersisa dikerjakan manual
+di dashboard: langkah 3 dan 4 di bawah (buat user + matikan signup). Langkah 1, 2, dan 5 sudah selesai.
+
 Satu kali, di https://supabase.com (gratis):
 
 1. **New project**. Pilih region terdekat (mis. Singapore) dan simpan *database password* di tempat aman (aplikasi tidak memakainya).
