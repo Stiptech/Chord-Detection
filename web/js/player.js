@@ -120,6 +120,7 @@ function refreshLabels() {
   });
   $('keyInfo').textContent = keyText();
   document.body.classList.toggle('editing', st.editing);
+  $('dockNow').hidden = !st.editing; // 'Sekarang: X' di dock hanya saat mode edit
   decorate();
   if (st.compareOn) renderCompare();
   st.idx = -2; // paksa perbarui panggung
@@ -147,6 +148,7 @@ function syncUI() {
   const now = $('nowChord');
   now.textContent = show(label);
   now.classList.toggle('none', label === 'N');
+  $('dockChord').textContent = show(label);
   const ni = nextChordIndex(st.segs, t);
   $('nextChord').textContent = ni >= 0 ? show(st.segs[ni].label) : '–';
   st.boxes.forEach((b, i) => {

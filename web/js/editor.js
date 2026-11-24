@@ -11,6 +11,9 @@ import {
 } from './edit-logic.js';
 
 const SAVE_DELAY_MS = 800;
+// Jenis yang paling sering dipakai selalu tampil; sisanya dilipat di "Jenis lain".
+const COMMON_QUALITIES = ['', 'm', 'sus2', 'sus4', '7', 'maj7', 'm7', 'add9'].filter((q) => QUALITY_OPTIONS.includes(q));
+const EXTRA_QUALITIES = QUALITY_OPTIONS.filter((q) => !COMMON_QUALITIES.includes(q));
 const $ = (id) => document.getElementById(id);
 
 /**
@@ -35,6 +38,7 @@ export function createEditor(ctx) {
   let selOrig = null; // label segmen terpilih saat pertama dipilih (untuk "ganti semua")
   let lastNonN = { rootPc: 0, suffix: '', bassPc: null };
   let manualError = '';
+  let showMore = false; // lipatan "Jenis lain"
   // penyimpanan
   let dirty = false, saving = false, error = null, savedAt = null, timer = 0, anyChange = false;
 
@@ -113,6 +117,11 @@ export function createEditor(ctx) {
     ctx.setSegs(ctx.getSegs(), sel);
     renderPane();
     if (i !== null) ctx.seekTo(ctx.getSegs()[i].start + 0.001);
+    // di layar kecil panel mungkin di luar pandangan: bawa ke atas hanya bila masih jauh di bawah
+    const pane = $('segEditor');
+    if (i !== null && !pane.hidden && pane.getBoundingClientRect().top > innerHeight * 0.6) {
+      pane.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   }
 
   function undo() {
@@ -155,6 +164,8 @@ export function createEditor(ctx) {
       apply(setLabelAt(segs, sel, labelFromPicker({ ...base, n: false, ...patch }, spell)));
     };
 
+    const qualityBtn = (q) => btn(qualityLabel(q), () => setPicker({ suffix: q }), { pressed: String(!!picker && !picker.n && picker.suffix === q) });
+    const currentIsExtra = !!picker && !picker.n && EXTRA_QUALITIES.includes(picker.suffix);
     const others = selOrig !== null && selOrig !== seg.label ? countLabel(segs, selOrig) : 0;
     const nudge = (label, fn, steps) => h('div', { class: 'nudge' },
       h('span', { class: 'nudge-label' }, label),
@@ -180,8 +191,10 @@ export function createEditor(ctx) {
 
       h('div', { class: 'pick-block' },
         h('span', { class: 'opt-label' }, 'Jenis'),
-        h('div', { class: 'pick-grid wide' },
-          QUALITY_OPTIONS.map((q) => btn(qualityLabel(q), () => setPicker({ suffix: q }), { pressed: String(!!picker && !picker.n && picker.suffix === q) })))),
+        h('div', { class: 'pick-grid wide' }, COMMON_QUALITIES.map(qualityBtn)),
+        // jenis yang jarang dipakai dilipat supaya panel tidak terlalu panjang di HP; terbuka otomatis bila chord ini memakainya
+        !currentIsExtra && btn(showMore ? 'Jenis lain ▴' : 'Jenis lain ▾', () => { showMore = !showMore; renderPane(); }, { cls: 'wide-btn' }),
+        (showMore || currentIsExtra) && h('div', { class: 'pick-grid wide' }, EXTRA_QUALITIES.map(qualityBtn))),
 
       h('div', { class: 'pick-block' },
         h('label', { class: 'opt-label', for: 'bassSel' }, 'Bass (slash chord, opsional)'),

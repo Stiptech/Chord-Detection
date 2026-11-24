@@ -45,18 +45,6 @@
       <div id="timeline" class="timeline" role="list" aria-label="Lini waktu chord"></div>
       <div id="compare" class="compare" hidden></div>
 
-      <div class="seekrow">
-        <span id="curTime" class="time">0:00</span>
-        <input id="seek" type="range" min="0" max="100" step="0.1" value="0" aria-label="Posisi lagu">
-        <span id="totTime" class="time">0:00</span>
-      </div>
-
-      <div class="transport">
-        <button id="back5" class="btn tbtn" type="button">−5 dtk</button>
-        <button id="playBtn" class="btn primary tbtn play" type="button">▶ Putar</button>
-        <button id="fwd5" class="btn tbtn" type="button">+5 dtk</button>
-      </div>
-
       <section id="editBar" class="card editbar" hidden>
         <div class="editbar-top">
           <strong>Mode edit</strong>
@@ -67,9 +55,25 @@
           <button id="redoBtn" class="btn small" type="button">↷ Ulangi</button>
           <button id="resetAutoBtn" class="btn small danger" type="button">Kembalikan ke hasil mesin</button>
         </div>
-        <p class="muted small-note">Menampilkan chord asli (tanpa transpose/capo). Ketuk kotak chord di lini waktu untuk mengeditnya. Perubahan tersimpan otomatis ke versi koreksi; hasil mesin tidak pernah ditimpa.</p>
+        <p class="muted small-note">Chord asli (tanpa transpose/capo). Ketuk kotak chord untuk mengedit; perubahan tersimpan otomatis ke versi koreksi, hasil mesin tidak pernah ditimpa.</p>
       </section>
       <section id="segEditor" class="card seged" hidden></section>
+
+      <!-- Dock: posisi + tombol putar. Saat mode edit menempel di bawah layar supaya tetap terjangkau sambil menggulir panel editor. -->
+      <div id="dock" class="dock">
+        <div class="dock-now" id="dockNow" hidden>Sekarang: <strong id="dockChord">–</strong></div>
+        <div class="seekrow">
+          <span id="curTime" class="time">0:00</span>
+          <input id="seek" type="range" min="0" max="100" step="0.1" value="0" aria-label="Posisi lagu">
+          <span id="totTime" class="time">0:00</span>
+        </div>
+
+        <div class="transport">
+          <button id="back5" class="btn tbtn" type="button">−5 dtk</button>
+          <button id="playBtn" class="btn primary tbtn play" type="button">▶ Putar</button>
+          <button id="fwd5" class="btn tbtn" type="button">+5 dtk</button>
+        </div>
+      </div>
 
       <section class="card opts">
         <div class="opt">

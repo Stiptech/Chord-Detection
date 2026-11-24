@@ -5,6 +5,7 @@ import { decodeAudio, sha256Hex } from './audio.js';
 import { analyzeSamples } from './analysis.js';
 import { formatLab, parseLab, validateSegments } from './labels.js';
 import { REQUIRE_LOGIN } from './supabase-config.js';
+import { h } from './dom.js';
 
 const api = createApi(supabase);
 const MAX_BYTES = 50 * 1024 * 1024; // sama dengan batas bucket
@@ -26,19 +27,6 @@ const state = {
 };
 
 // ---------- util ----------
-
-function h(tag, attrs = {}, ...children) {
-  const el = document.createElement(tag);
-  for (const [k, v] of Object.entries(attrs)) {
-    if (v === false || v == null) continue;
-    if (k === 'class') el.className = v;
-    else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
-    else el.setAttribute(k, v === true ? '' : v);
-  }
-  // false/null/undefined dilewati supaya `kondisi && elemen` aman dipakai sebagai anak.
-  for (const c of children.flat()) if (c != null && c !== false) el.append(c);
-  return el;
-}
 
 const fmtTime = (sec) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
 const fmtSize = (b) => (b >= 1048576 ? `${(b / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1024))} KB`);

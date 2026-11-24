@@ -39,7 +39,8 @@ Koreksi disimpan sebagai versi `corrected` dan **tidak pernah menimpa** hasil me
   geser playhead, dan **Loop segmen ini**. Durasi segmen minimal 0,1 detik; segmen tidak tumpang tindih.
 - **Simpan otomatis** 0,8 detik setelah perubahan terakhir, dengan indikator. **Urungkan/Ulangi** sampai 100 langkah (Ctrl+Z / Ctrl+Shift+Z).
   **Kembalikan ke hasil mesin** (konfirmasi, bisa diurungkan). **⇄ Bandingkan dengan mesin**: dua baris sejajar, segmen berbeda diberi warna.
-- Mode edit menampilkan chord **asli** (tanpa transpose/capo). Tidak ada penguncian antar perangkat: bila dua perangkat mengedit lagu yang sama, yang menyimpan terakhir menang.
+- Mode edit menampilkan chord **asli** (tanpa transpose/capo). Panel editor muncul tepat di bawah lini waktu, dan **dock** (posisi, tombol putar, ±5 detik, "Sekarang: …") menempel di dasar layar sambil mengedit, jadi kamu tidak perlu menggulir ke atas untuk memutar. Jenis chord yang jarang dipakai dilipat di "Jenis lain".
+  Tidak ada penguncian antar perangkat: bila dua perangkat mengedit lagu yang sama, yang menyimpan terakhir menang.
 
 ### Statistik
 
@@ -113,4 +114,4 @@ cd web; python -m http.server 8000                                  # jalankan l
 - **Safari iPad asli** (seek dan putar dari URL Supabase, sentuhan di editor, Wake Lock, pemasangan ke layar utama) dan **service worker di browser sungguhan**
   (browser uji tidak mendukung service worker; perilakunya diuji di Node dengan `self`/`caches`/`fetch` tiruan).
 - **Akurasi pada banyak lagu.** Belum ada lagu yang dikoreksi penuh, jadi akurasi nyata belum terukur.
-- Editor di layar HP panjang (perlu menggulir antara lini waktu dan panel).
+- Editor di layar HP masih panjang (~1200 px) meski dock menempel; tata letaknya baru dilihat di emulasi Chrome, belum di iPad.

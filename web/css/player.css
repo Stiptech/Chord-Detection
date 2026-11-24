@@ -117,3 +117,24 @@
 .cmp-box.sel { outline: 3px solid var(--warn); }
 .cmp-head { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--accent); pointer-events: none; z-index: 2; }
 .cmp-legend { font-size: .85rem; margin: 4px 0 0; }
+
+/* ---------- Dock: posisi + tombol putar ---------- */
+.dock { margin: 0 0 14px; }
+.dock-now { font-size: .9rem; color: var(--muted); margin-bottom: 2px; }
+.dock-now strong { color: var(--accent); font-size: 1.2rem; }
+/* Saat mode edit dock menempel di bawah layar, supaya tombol putar tetap terjangkau sambil menggulir panel editor. */
+.editing .dock {
+  position: sticky; bottom: 0; z-index: 6;
+  margin: 0 -16px 0; padding: 8px 16px calc(8px + env(safe-area-inset-bottom));
+  background: var(--bg); border-top: 1px solid var(--line); box-shadow: 0 -6px 14px rgba(0, 0, 0, .18);
+}
+.editing .dock .seekrow { margin: 2px 0 6px; }
+.editing .dock .transport { margin-bottom: 0; }
+.editing .dock .tbtn { min-height: 52px; }
+.seged { scroll-margin-top: 64px; }
+.editing .opts { margin-top: 14px; }
+
+/* Baris geser batas: label di atas, lima tombol sebaris (lebih pendek daripada membungkus ke dua baris) */
+.nudge { display: grid; grid-template-columns: repeat(auto-fit, minmax(54px, 1fr)); gap: 6px; }
+.nudge .nudge-label { grid-column: 1 / -1; min-width: 0; }
+.nudge .btn { min-width: 0; padding: 6px 2px; font-size: .88rem; }
