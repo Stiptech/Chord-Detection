@@ -11,6 +11,12 @@ STATIC_DIR = ROOT / "app" / "static"
 
 FFMPEG_BIN = "ffmpeg"
 
+# --- Unduhan dari link (yt-dlp) ---
+MAX_DOWNLOAD_SEC = 15 * 60  # video lebih panjang ditolak (menghindari livestream/video berjam-jam)
+DOWNLOAD_SOCKET_TIMEOUT = 20  # detik; supaya tidak menggantung bila koneksi mati
+# Utamakan m4a (AAC): bisa diputar Safari/iPad. webm/opus tidak selalu bisa.
+DOWNLOAD_FORMAT = "bestaudio[ext=m4a]/bestaudio/best"
+
 # --- Audio ---
 SAMPLE_RATE = 22050
 HOP_LENGTH = 2048  # ~93 ms per frame pada 22050 Hz

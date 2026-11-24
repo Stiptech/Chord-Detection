@@ -67,6 +67,13 @@ def get_song(song_id: int) -> dict | None:
     return dict(row) if row else None
 
 
+def find_by_source_key(source_key: str) -> dict | None:
+    with _conn() as con:
+        row = con.execute("SELECT * FROM songs WHERE source_key=? ORDER BY id LIMIT 1",
+                          (source_key,)).fetchone()
+    return dict(row) if row else None
+
+
 def list_songs() -> list[dict]:
     with _conn() as con:
         rows = con.execute("SELECT * FROM songs ORDER BY id DESC").fetchall()

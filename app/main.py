@@ -4,6 +4,7 @@ import math
 import mimetypes
 import re
 import shutil
+import tempfile
 from contextlib import asynccontextmanager
 from pathlib import Path
 from urllib.parse import quote
@@ -13,8 +14,9 @@ from fastapi.responses import FileResponse, PlainTextResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import config, storage
+from . import config, download, storage
 from .audio import AudioError, to_wav
+from .download import DownloadError
 from .detectors.base import Segment
 from .detectors.registry import DETECTORS, get_detector
 from .labels import is_valid_chord, write_lab
@@ -62,6 +64,10 @@ def _check_version(version: str) -> None:
                                  f"atau nama detector ({', '.join(sorted(DETECTORS))}).")
 
 
+def _clean_name(raw: str) -> str:
+    return re.sub(r"[\x00-\x1f]", "", raw).strip()[:200] or "Tanpa judul"
+
+
 def _attachment(filename: str) -> dict:
     ascii_name = re.sub(r"[^A-Za-z0-9._-]", "_", filename) or "export"
     return {"Content-Disposition":
@@ -76,7 +82,7 @@ def upload_song(file: UploadFile = File(...)):
     stem, dot, ext = original.rpartition(".")
     if not dot:
         stem, ext = original, ""
-    name = re.sub(r"[\x00-\x1f]", "", stem).strip()[:200] or "Tanpa judul"
+    name = _clean_name(stem)
     ext = ("." + ext.lower()) if re.fullmatch(r"[A-Za-z0-9]{1,5}", ext) else ""
 
     song_id = storage.create_song(name)
@@ -92,6 +98,58 @@ def upload_song(file: UploadFile = File(...)):
         storage.delete_song(song_id)
         raise
     return _public(storage.get_song(song_id))
+
+
+# ---------- input dari link ----------
+
+class UrlIn(BaseModel):
+    url: str
+
+
+def run_download(song_id: int, url: str) -> None:
+    """Background task: downloading -> converting -> uploaded (lalu siap dianalisis seperti upload biasa)."""
+    try:
+        # Folder sementara di drive yang sama dengan data/ supaya pemindahan file cepat; otomatis dibersihkan.
+        with tempfile.TemporaryDirectory(dir=config.CACHE_DIR, prefix="dl-") as tmp:
+            downloaded = download.download_audio(url, Path(tmp))
+            dest = config.AUDIO_DIR / f"{song_id}{downloaded.suffix.lower()}"
+            shutil.move(downloaded, dest)
+        storage.update_song(song_id, audio_file=dest.name, status="converting")
+        to_wav(dest)  # hangatkan cache wav sekaligus memastikan file terbaca ffmpeg
+        storage.update_song(song_id, status="uploaded", error=None)
+    except (DownloadError, AudioError) as e:
+        storage.update_song(song_id, status="error", error=str(e))
+    except Exception as e:
+        log.exception("Unduhan lagu %s gagal", song_id)
+        storage.update_song(song_id, status="error", error=f"Unduhan gagal: {e}")
+
+
+@app.post("/api/songs/from-url", status_code=202)
+def add_from_url(body: UrlIn, background: BackgroundTasks, response: Response):
+    # Metadata diambil di sini (1-3 detik) supaya link salah/playlist/terlalu panjang
+    # langsung ditolak dengan pesan jelas, sebelum ada record yang dibuat.
+    try:
+        url = download.validate_url(body.url)
+        info = download.fetch_info(url)
+    except DownloadError as e:
+        raise HTTPException(400, str(e)) from None
+
+    existing = storage.find_by_source_key(info.key) if info.key else None
+    if existing:
+        audio = existing["audio_file"]
+        if existing["status"] in storage.BUSY_STATUSES or (audio and (config.AUDIO_DIR / audio).is_file()):
+            # Link yang sama tidak diunduh dua kali: kembalikan lagu yang sudah ada.
+            response.status_code = 200
+            return {**_public(existing), "duplicate": True}
+        # Percobaan sebelumnya gagal dan tak ada audio: pakai ulang record yang sama.
+        song_id = existing["id"]
+        storage.update_song(song_id, name=_clean_name(info.title), status="downloading",
+                            error=None, audio_file="", source_url=url)
+    else:
+        song_id = storage.create_song(_clean_name(info.title), status="downloading",
+                                      source_url=url, source_key=info.key)
+    background.add_task(run_download, song_id, url)
+    return {**_public(storage.get_song(song_id)), "duplicate": False}
 
 
 @app.get("/api/songs")

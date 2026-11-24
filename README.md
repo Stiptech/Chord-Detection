@@ -1,7 +1,7 @@
 # Chord Finder (pribadi, lagu rohani)
 
 Aplikasi lokal untuk mendeteksi chord dari file audio/video atau link, lalu mengoreksinya.
-Status: **Fase 1 (engine CLI) dan Fase 2 (backend API) selesai**. Link YouTube (2b) dan web UI menyusul.
+Status: **Fase 1 (engine CLI), Fase 2 (backend API), dan Fase 2b (input dari link) selesai**. Web UI menyusul.
 
 ## Instalasi
 
@@ -57,6 +57,25 @@ curl.exe http://localhost:8000/api/songs/1/chords
 | `GET /api/songs/{id}/audio` | stream audio dengan HTTP Range (seek di Safari) |
 | `GET /api/songs/{id}/export?format=lab\|txt&version=corrected` | unduh label; `txt` = 4 chord per baris tanpa `N` |
 | `DELETE /api/songs/{id}` | hapus audio + semua label lagu itu (cache wav dibiarkan; dipakai bersama) |
+
+### Input dari link (Fase 2b)
+
+```powershell
+curl.exe -X POST http://localhost:8000/api/songs/from-url -H "Content-Type: application/json" -d "{\"url\":\"https://youtu.be/XXXX\"}"
+```
+
+- Hanya `http`/`https`. Satu link = satu video; playlist, livestream, dan video lebih dari
+  15 menit (`MAX_DOWNLOAD_SEC` di `app/config.py`) ditolak langsung (400) dengan pesan jelas.
+- Status yang bisa dipoll lewat `GET /api/songs/{id}`: `downloading` -> `converting` -> `uploaded`
+  (atau `error` dengan pesan manusiawi). Setelah itu lagu diperlakukan persis seperti upload:
+  tinggal `POST .../analyze`. Status `ready` tetap berarti *analisis selesai*.
+- Audio disimpan di `data/audio/<id>.m4a` (format m4a/AAC diutamakan karena bisa diputar Safari iPad).
+- Link yang sama tidak diunduh dua kali: kalau video itu sudah ada sebagai lagu, respons `200` berisi
+  lagu yang sudah ada dengan `"duplicate": true`. Kalau percobaan sebelumnya gagal, record yang sama dipakai ulang.
+- Hanya untuk pemakaian pribadi. Hormati hak cipta dan ketentuan layanan situs asal.
+- **yt-dlp perlu diperbarui berkala** karena situs sering berubah. Kalau muncul pesan
+  "yt-dlp sudah kadaluarsa", jalankan `.\.venv\Scripts\python.exe -m pip install -U yt-dlp` lalu mulai ulang server.
+- Unduhan butuh internet; analisis dan semua fitur lain tetap 100% lokal.
 
 File label per lagu di `data/labels/`: `<id>.auto.lab` (analisis terakhir, tidak pernah disentuh
 koreksi), `<id>.<detector>.lab` (tiap detector), `<id>.corrected.lab` (koreksimu). Analisis ulang
