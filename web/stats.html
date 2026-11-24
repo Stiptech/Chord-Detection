@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <title>Statistik · Chord Finder</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/stats.css">
+</head>
+<body>
+  <header class="bar">
+    <a class="btn small" href="index.html">← Lagu</a>
+    <h1 class="ptitle">Statistik akurasi</h1>
+  </header>
+
+  <main>
+    <p id="stateMsg" class="muted">Memuat…</p>
+    <p id="errorMsg" class="error" role="alert" hidden></p>
+
+    <section id="emptyView" hidden class="card">
+      <h2>Belum ada lagu yang dikoreksi</h2>
+      <p>Statistik membandingkan hasil mesin dengan <strong>koreksimu</strong>. Buka pemutar sebuah lagu, tekan
+        <strong>✎ Mode edit</strong>, perbaiki chord yang salah sampai seluruh lagu benar, lalu kembali ke sini.</p>
+      <a class="btn primary" href="index.html">Ke daftar lagu</a>
+    </section>
+
+    <section id="statsView" hidden>
+      <p id="summary" class="muted"></p>
+
+      <h2>Perbandingan versi mesin</h2>
+      <p class="muted small-note">Satu baris per versi hasil mesin (auto = analisis terakhir; nama lain = detector tertentu). Pakai ini untuk melihat apakah detector membaik atau memburuk setelah penyetelan.</p>
+      <div id="versionTable" class="tablewrap"></div>
+
+      <h2>Rincian: <span id="detailVersion"></span></h2>
+      <div id="versionPick" class="seg" role="group" aria-label="Versi mesin"></div>
+
+      <h3>Per lagu</h3>
+      <div id="songTable" class="tablewrap"></div>
+
+      <h3>Akurasi per jenis chord</h3>
+      <p class="muted small-note"><strong>Persis sama</strong> = nama chord identik (Dsus2 ≠ D). <strong>Nada dasar</strong> = root benar walau jenisnya salah. Dihitung dari durasi chord acuan (koreksimu).</p>
+      <div id="classTable" class="tablewrap"></div>
+
+      <h3>Salah baca terbanyak</h3>
+      <p class="muted small-note">Acuan (koreksimu) → hasil mesin, berdasarkan lamanya (detik).</p>
+      <div id="confTable" class="tablewrap"></div>
+
+      <section class="card notes">
+        <h3>Cara membaca</h3>
+        <ul>
+          <li><strong>root, majmin, thirds, sevenths</strong> memakai aturan mir_eval, berbobot durasi. <strong>“–”</strong> berarti tidak ada bagian yang bisa dibandingkan (mir_eval mengecualikan chord acuan di luar kosakata metrik itu, mis. sus untuk majmin).</li>
+          <li>mir_eval <strong>mengabaikan nada ke-9</strong>: add9 dianggap mayor, 9 dianggap 7. Itu sebabnya ada tabel “per jenis chord” dan “salah baca”, yang membedakan sampai sufiks.</li>
+          <li><strong>Hanya sebagus koreksimu.</strong> Bagian lagu yang belum kamu periksa masih berisi hasil mesin, sehingga dihitung “benar”. Angka yang adil hanya untuk lagu yang sudah kamu periksa sampai habis.</li>
+        </ul>
+      </section>
+    </section>
+  </main>
+
+  <script type="module" src="js/stats.js"></script>
+</body>
+</html>

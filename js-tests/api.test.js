@@ -159,3 +159,9 @@ test('getAudioUrl meminta signed URL dengan masa berlaku', async () => {
   assert.equal(await createApi(sb).getAudioUrl({ audio_path: 'u/s.mp3' }, 120), 'https://x/u/s.mp3?t=1');
   assert.equal(sb.calls[0].sec, 120);
 });
+
+test('listAllLabels mengambil semua baris label', async () => {
+  const sb = fakeClient({ db: () => ({ data: [{ song_id: 's1', version: 'auto', segments: [] }], error: null }) });
+  assert.deepEqual(await createApi(sb).listAllLabels(), [{ song_id: 's1', version: 'auto', segments: [] }]);
+  assert.equal(sb.calls[0].table, 'label_versions');
+});

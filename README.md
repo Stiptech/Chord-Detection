@@ -6,7 +6,7 @@ Aplikasi lokal untuk mendeteksi chord dari file audio/video atau link, lalu meng
 > dipakai dan akan dihapus di fase akhir; engine, format label, dan tes Python tetap sebagai acuan
 > dan alat evaluasi offline. Penyimpanan lintas perangkat (database) sedang diputuskan.
 
-Status: Fase 1, 2, 2b (Python) selesai. Fase A (engine JS), B (Supabase + daftar lagu), C (pemutar chord), dan **D (editor koreksi)** selesai; berjalan tanpa login (mode terbuka). Evaluasi menyusul (Fase E).
+Status: Fase 1, 2, 2b (Python) selesai. Fase A (engine JS), B (Supabase + daftar lagu), C (pemutar chord), D (editor koreksi), dan **E (evaluasi)** selesai; berjalan tanpa login (mode terbuka). Berikutnya: F (PWA/deploy). Detector pretrained (Fase 6) hanya bila diminta.
 
 ## Supabase (database + penyimpanan audio lintas perangkat)
 
@@ -85,6 +85,34 @@ hasil mesin (`auto`).
 
 Batasan: tidak ada penguncian antar perangkat; bila dua perangkat mengedit lagu yang sama, yang terakhir menyimpan menang.
 Editor panjang di layar HP (kamu perlu menggulir dari lini waktu ke panel); tata letak ini belum diuji di Safari iPad.
+
+## Evaluasi (Fase E): seberapa benar hasil mesin?
+
+Acuannya adalah **koreksimu** (`corrected`); yang dinilai adalah hasil mesin (`auto` = analisis terakhir, atau `baseline`/detector lain).
+
+**Halaman statistik** (`web/stats.html`, tombol "📊 Statistik akurasi" di daftar lagu), dihitung di browser dari label di Supabase:
+- *Perbandingan versi mesin*: satu baris per versi, untuk melihat apakah detector membaik atau memburuk setelah penyetelan.
+- *Per lagu* dan total (rata-rata berbobot durasi), *akurasi per jenis chord* (mayor, minor, sus, add9, 7th, slash, N, lainnya), dan *salah baca terbanyak* (mis. `Dsus2 → D` berapa detik).
+- Empat skor standar mir_eval: **root**, **majmin**, **thirds**, **sevenths**. "–" = tidak ada bagian yang bisa dibandingkan.
+
+**Skrip Python** (memakai mir_eval sungguhan, untuk label yang kamu ekspor):
+```powershell
+.\.venv\Scripts\python.exe scripts\evaluate_dir.py --backup chordfinder-backup-2026-11-24.json   # dari tombol "Ekspor semua label (JSON)"
+.\.venv\Scripts\python.exe scripts\evaluate_dir.py --dir data\labels --est baseline              # folder <id>.corrected.lab + <id>.baseline.lab
+```
+
+Aturan evaluasi (sama di `app/evaluate.py` dan `web/js/evaluate.js`): rentang evaluasi = rentang koreksi; mesin dipotong atau diisi `N`
+mengikuti rentang itu; celah di kedua sisi dianggap `N`. Selisih batas segmen < 0,1 detik tidak dihitung sebagai "salah baca".
+
+**Yang perlu dipahami:**
+- **mir_eval mengabaikan nada ke-9**: `add9` dianggap mayor, `9` = `7`, `maj9` = `maj7`, `m9` = `m7`. Jadi salah baca `Cadd9` → `C` tidak mengurangi
+  skor mir_eval; untuk itu ada tabel per jenis ("persis sama") dan daftar salah baca. `majmin` dan `sevenths` juga **mengecualikan** chord acuan di luar
+  kosakatanya (mis. sus), sedangkan `thirds` hanya melihat root dan ada tidaknya terts minor (sus dan mayor dianggap sama).
+- **Hanya sebagus koreksimu.** Bagian lagu yang belum kamu periksa masih berisi hasil mesin, sehingga dihitung "benar". Angka yang adil hanya
+  untuk lagu yang sudah kamu periksa sampai habis. Lagu yang baru sebagian dikoreksi membuat akurasi tampak terlalu tinggi.
+- **Paritas JS = mir_eval dibuktikan**: `scripts/make_eval_fixture.py` membangkitkan 80 kasus acak (semua jenis chord, slash, N, celah, rentang
+  berbeda) beserta jawaban dari mir_eval ke `js-tests/fixtures/eval-parity.json`; tes JS membandingkan semuanya. Jalankan ulang skripnya hanya bila
+  logika evaluasi atau kosakata chord berubah.
 
 ## Engine JavaScript (`web/js/`)
 

@@ -146,6 +146,13 @@ export function createApi(sb, { bucket = 'audio' } = {}) {
       return { version: null, segments: null };
     },
 
+    /** Semua label semua lagu: [{song_id, version, segments}] (dipakai halaman statistik). */
+    async listAllLabels() {
+      const { data, error } = await sb.from('label_versions').select('song_id,version,segments');
+      check(error);
+      return data;
+    },
+
     async saveLabels(songId, version, segments) {
       const { error } = await sb.from('label_versions').upsert(
         { song_id: songId, version, segments, updated_at: new Date().toISOString() },

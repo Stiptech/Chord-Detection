@@ -108,7 +108,7 @@ input[type="email"], input[type="password"] {
 .chip b { font-size: 1.1rem; }
 .chip small { color: var(--muted); font-size: .72rem; }
 
-.foot { margin-top: 24px; display: flex; justify-content: center; }
+.foot { margin-top: 24px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
 
 .toast {
   position: fixed; left: 16px; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom));
