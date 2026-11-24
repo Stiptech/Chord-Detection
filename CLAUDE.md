@@ -15,7 +15,7 @@ Saat ini MODE TERBUKA tanpa login (`REQUIRE_LOGIN = false`, RLS `using (true)` u
 jangan sentuh project Supabase lain milik mereka. Password akun dibuat pengguna sendiri.
 Tes JS: `npm test`. Render UI diuji di browser dengan klien Supabase palsu (import map), tanpa login sungguhan.
 
-Fase: A engine JS (selesai) -> B login + penyimpanan + daftar lagu (selesai) -> C pemutar -> D koreksi -> E evaluasi -> F deploy/PWA.
+Fase: A engine JS (selesai) -> B penyimpanan + daftar lagu (selesai) -> C pemutar (selesai) -> D koreksi -> E evaluasi -> F deploy/PWA.
 
 ## Prinsip
 - Sederhana dan mudah diubah. Tanpa auth, tanpa cloud, tanpa ORM, frontend vanilla tanpa build step.

@@ -90,6 +90,12 @@ export function createApi(sb, { bucket = 'audio' } = {}) {
       return data;
     },
 
+    async getSong(id) {
+      const { data, error } = await sb.from('songs').select('*').eq('id', id).maybeSingle();
+      check(error);
+      return data; // null bila tidak ada
+    },
+
     async updateSong(id, patch) {
       const { data, error } = await sb.from('songs')
         .update({ ...patch, updated_at: new Date().toISOString() }).eq('id', id).select().single();
@@ -107,7 +113,7 @@ export function createApi(sb, { bucket = 'audio' } = {}) {
       check(error);
     },
 
-    async getAudioUrl(song, expiresSec = 3600) {
+    async getAudioUrl(song, expiresSec = 6 * 3600) {
       const { data, error } = await sb.storage.from(bucket).createSignedUrl(song.audio_path, expiresSec);
       check(error);
       return data.signedUrl;

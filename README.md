@@ -6,7 +6,7 @@ Aplikasi lokal untuk mendeteksi chord dari file audio/video atau link, lalu meng
 > dipakai dan akan dihapus di fase akhir; engine, format label, dan tes Python tetap sebagai acuan
 > dan alat evaluasi offline. Penyimpanan lintas perangkat (database) sedang diputuskan.
 
-Status: Fase 1, 2, 2b (Python) selesai. Fase A (engine JavaScript) dan Fase B (penyimpanan Supabase + daftar lagu) selesai; **berjalan tanpa login** (mode terbuka). Pemutar menyusul.
+Status: Fase 1, 2, 2b (Python) selesai. Fase A (engine JS), Fase B (Supabase + daftar lagu), dan **Fase C (pemutar chord)** selesai; berjalan tanpa login (mode terbuka). Editor koreksi menyusul (Fase D).
 
 ## Supabase (database + penyimpanan audio lintas perangkat)
 
@@ -43,8 +43,25 @@ python -m http.server 8000      # lalu buka http://localhost:8000
 3. Analisis yang terputus (tab ditutup) tampil sebagai "Terputus" dan bisa diulang. Daftar lagu
    disegarkan otomatis saat tab kembali aktif, jadi perubahan dari perangkat lain muncul.
 
-Tes: `npm test` (tanpa jaringan; klien Supabase dipalsukan). Pemutar chord, lini waktu, dan editor koreksi
-menyusul di Fase C dan D.
+Tes: `npm test` (tanpa jaringan; klien Supabase dipalsukan).
+
+## Pemutar (Fase C): `web/player.html`
+
+Dibuka dari tombol **▶ Buka pemutar** di kartu lagu (`player.html?id=<id lagu>`).
+
+- **Chord aktif** tampil besar di tengah, **chord berikutnya** lebih kecil di sampingnya. Segmen `N` (tanpa chord) tampil `–`.
+- **Lini waktu** horizontal berisi kotak chord (lebar ~ durasi, minimal 60 px). Kotak aktif menyala dan ikut bergulir;
+  menggeser lini waktu sendiri menjeda auto-scroll 2,5 detik. Ketuk kotak untuk melompat ke chord itu.
+- **Kontrol:** putar/jeda, ±5 detik, penggeser posisi, kecepatan 0.5× / 0.75× / 1× / 1.25× (`preservesPitch`, jadi nada tetap),
+  **loop A–B** (Set A, Set B, Hapus loop), layar tetap menyala saat main (Wake Lock, bila didukung).
+  Laptop: spasi = putar/jeda, panah kiri/kanan = ±5 detik.
+- **Transpose** −6..+6 dan **capo** 0..11 hanya mengubah nama chord yang ditampilkan, bukan audio. Chord yang tampil = bentuk
+  yang dimainkan (nada dasar dikurangi capo). **Ejaan** ♯/♭ konsisten: "Otomatis" memilih flat untuk key berflat (F, Bb, Eb, ...) dan sharp untuk lainnya.
+- **Key** ditebak dari chord (profil Krumhansl-Kessler, dibobot durasi). Hanya tebakan.
+- Transpose, capo, dan ejaan diingat per lagu di browser (localStorage).
+- Audio dialirkan dari Supabase Storage lewat URL bertanda tangan (6 jam) yang mendukung HTTP Range, jadi seek bekerja; kalau URL
+  gagal/kedaluwarsa, pemutar meminta yang baru dan lanjut dari posisi yang sama.
+- Menampilkan versi `corrected` bila ada, kalau tidak hasil mesin (belum dikoreksi).
 
 ## Engine JavaScript (`web/js/`)
 

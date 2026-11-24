@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <title>Pemutar · Chord Finder</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/player.css">
+</head>
+<body>
+  <header class="bar">
+    <a class="btn small" href="index.html">← Lagu</a>
+    <h1 id="songTitle" class="ptitle">Memuat…</h1>
+  </header>
+
+  <main>
+    <p id="stateMsg" class="muted">Memuat…</p>
+    <p id="errorMsg" class="error" role="alert" hidden></p>
+
+    <section id="playerView" hidden>
+      <div class="keyline">
+        <span id="keyInfo"></span>
+        <span id="versionInfo" class="muted"></span>
+      </div>
+
+      <div class="stage card">
+        <div class="now"><span id="nowChord" class="now-chord">–</span></div>
+        <div class="next"><span class="muted">berikut</span><span id="nextChord" class="next-chord">–</span></div>
+      </div>
+
+      <div id="timeline" class="timeline" role="list" aria-label="Lini waktu chord"></div>
+
+      <div class="seekrow">
+        <span id="curTime" class="time">0:00</span>
+        <input id="seek" type="range" min="0" max="100" step="0.1" value="0" aria-label="Posisi lagu">
+        <span id="totTime" class="time">0:00</span>
+      </div>
+
+      <div class="transport">
+        <button id="back5" class="btn tbtn" type="button">−5 dtk</button>
+        <button id="playBtn" class="btn primary tbtn play" type="button">▶ Putar</button>
+        <button id="fwd5" class="btn tbtn" type="button">+5 dtk</button>
+      </div>
+
+      <section class="card opts">
+        <div class="opt">
+          <span class="opt-label">Kecepatan</span>
+          <div id="speedSeg" class="seg" role="group" aria-label="Kecepatan putar"></div>
+        </div>
+
+        <div class="opt">
+          <span class="opt-label">Loop A–B</span>
+          <div class="row">
+            <button id="setA" class="btn small" type="button">Set A</button>
+            <button id="setB" class="btn small" type="button">Set B</button>
+            <button id="clearLoop" class="btn small" type="button">Hapus loop</button>
+          </div>
+          <span id="loopInfo" class="muted loopinfo">Loop mati</span>
+        </div>
+
+        <div class="opt">
+          <span class="opt-label">Transpose</span>
+          <div class="stepper">
+            <button id="trDown" class="btn small" type="button" aria-label="Turun satu semiton">−</button>
+            <output id="trVal" aria-live="polite">0</output>
+            <button id="trUp" class="btn small" type="button" aria-label="Naik satu semiton">+</button>
+            <button id="trReset" class="btn small" type="button">Reset</button>
+          </div>
+        </div>
+
+        <div class="opt">
+          <span class="opt-label">Capo</span>
+          <div class="stepper">
+            <button id="capoDown" class="btn small" type="button" aria-label="Capo turun satu fret">−</button>
+            <output id="capoVal" aria-live="polite">0</output>
+            <button id="capoUp" class="btn small" type="button" aria-label="Capo naik satu fret">+</button>
+          </div>
+        </div>
+
+        <div class="opt">
+          <span class="opt-label">Ejaan</span>
+          <div id="spellSeg" class="seg" role="group" aria-label="Ejaan sharp atau flat"></div>
+        </div>
+        <p class="muted small-note">Transpose dan capo hanya mengubah nama chord yang ditampilkan, bukan audionya.</p>
+      </section>
+    </section>
+  </main>
+
+  <audio id="audio" preload="auto" playsinline></audio>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <script type="module" src="js/player.js"></script>
+</body>
+</html>
