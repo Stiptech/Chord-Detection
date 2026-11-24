@@ -4,3 +4,7 @@
 export const SUPABASE_URL = 'https://lzthqhlyekkuvjibaopu.supabase.co';
 export const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_1Jw8gvCmvvAfJmci2AdX2Q_AqLBqOTd';
 export const AUDIO_BUCKET = 'audio';
+
+// false = tanpa login: SIAPA PUN yang membuka situs ini bisa melihat, mengubah, dan menghapus data.
+// Untuk mengunci: jalankan supabase/lock-down.sql, buat user di dashboard, lalu ubah ke true.
+export const REQUIRE_LOGIN = false;

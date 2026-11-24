@@ -8,8 +8,9 @@ Web statis yang jalan di browser, deploy ke Netlify dari GitHub (folder `web/`, 
 Analisis chord dilakukan di browser (`web/js/`); Python (`app/`, `tests/`, `scripts/`) tetap sebagai acuan,
 tes kesamaan, dan evaluasi offline. Backend FastAPI (`app/main.py`, `storage.py`, `download.py`) tidak lagi
 dipakai dan dihapus di fase akhir. Fitur tempel link YouTube dilepas.
-Data lintas perangkat: Supabase project `chord-finder` (Postgres songs + label_versions, bucket privat `audio`,
-login email/password satu akun, RLS per pengguna; skema di `supabase/schema.sql`). Klien: `web/js/api.js`
+Data lintas perangkat: Supabase project `chord-finder` (Postgres songs + label_versions, bucket privat `audio`).
+Saat ini MODE TERBUKA tanpa login (`REQUIRE_LOGIN = false`, RLS `using (true)` untuk anon; atas permintaan pengguna);
+`supabase/lock-down.sql` + `REQUIRE_LOGIN = true` mengunci ke satu akun. Skema di `supabase/schema.sql`. Klien: `web/js/api.js`
 (klien disuntikkan agar bisa diuji tanpa jaringan). Pengguna memberi izin penuh untuk urusan project ini;
 jangan sentuh project Supabase lain milik mereka. Password akun dibuat pengguna sendiri.
 Tes JS: `npm test`. Render UI diuji di browser dengan klien Supabase palsu (import map), tanpa login sungguhan.

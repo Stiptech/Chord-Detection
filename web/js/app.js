@@ -4,6 +4,7 @@ import { createApi, humanizeError } from './api.js';
 import { decodeAudio, sha256Hex } from './audio.js';
 import { analyzeSamples } from './analysis.js';
 import { formatLab, parseLab, validateSegments } from './labels.js';
+import { REQUIRE_LOGIN } from './supabase-config.js';
 
 const api = createApi(supabase);
 const MAX_BYTES = 50 * 1024 * 1024; // sama dengan batas bucket
@@ -298,7 +299,16 @@ function showView(name) {
   $('loading').hidden = true;
   $('loginView').hidden = name !== 'login';
   $('listView').hidden = name !== 'list';
-  $('userBox').hidden = name !== 'list';
+  $('userBox').hidden = !(name === 'list' && REQUIRE_LOGIN);
+}
+
+async function enterOpen() {
+  showView('list');
+  try {
+    await refreshSongs();
+  } catch (e) {
+    toast(humanizeError(e));
+  }
 }
 
 async function enter(session) {
@@ -365,6 +375,7 @@ api.onAuthChange((event, session) => {
 });
 
 (async function init() {
+  if (!REQUIRE_LOGIN) return enterOpen();
   try {
     const session = await api.getSession();
     if (session) await enter(session);

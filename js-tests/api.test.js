@@ -20,7 +20,7 @@ function fakeClient({ db = () => ({ data: null, error: null }), storage = {}, se
     return b;
   };
   const bucket = (name) => ({
-    upload: async (path, file, opts) => { calls.push({ storage: 'upload', name, path, opts }); return storage.upload?.() ?? { data: {}, error: null }; },
+    upload: async (path, body, opts) => { calls.push({ storage: 'upload', name, path, body, opts }); return storage.upload?.() ?? { data: {}, error: null }; },
     remove: async (paths) => { calls.push({ storage: 'remove', name, paths }); return storage.remove?.() ?? { data: [], error: null }; },
     createSignedUrl: async (path, sec) => { calls.push({ storage: 'sign', path, sec }); return { data: { signedUrl: `https://x/${path}?t=1` }, error: null }; },
   });
@@ -62,7 +62,7 @@ test('addSong: unggah ke <user>/<id>.<ext> dengan content-type benar, lalu inser
   const song = await api.addSong(file('Bagi Mu Tuhan.m4a'), { hash: 'abc', duration: 200.5 });
 
   const up = sb.calls.find((c) => c.storage === 'upload');
-  assert.match(up.path, /^user-1\/[0-9a-f-]{36}\.m4a$/);
+  assert.match(up.path, /^shared\/[0-9a-f-]{36}\.m4a$/);
   assert.equal(up.opts.contentType, 'audio/mp4');
   assert.equal(up.opts.upsert, false);
   assert.equal(song.name, 'Bagi Mu Tuhan');
@@ -70,6 +70,15 @@ test('addSong: unggah ke <user>/<id>.<ext> dengan content-type benar, lalu inser
   assert.equal(song.audio_hash, 'abc');
   assert.equal(song.duration_sec, 200.5);
   assert.equal(song.status, 'uploaded');
+});
+
+test('addSong: file dengan type kosong dibungkus agar terkirim dengan content-type benar', async () => {
+  const sb = fakeClient({ db: (q) => ({ data: op(q, 'insert')[0], error: null }) });
+  const real = new File(['abc'], 'Lagu.m4a', { type: '' }); // seperti Safari
+  await createApi(sb).addSong(real, { hash: 'h', duration: 1 });
+  const up = sb.calls.find((c) => c.storage === 'upload');
+  assert.equal(up.body.type, 'audio/mp4'); // yang dipakai supabase-js untuk multipart
+  assert.equal(up.body.size, 3);
 });
 
 test('addSong: insert gagal -> file yang sudah terunggah dihapus lagi', async () => {
@@ -86,14 +95,16 @@ test('addSong: unggah gagal -> tidak ada record dibuat', async () => {
   assert.ok(!sb.calls.some((c) => c.table === 'songs'));
 });
 
-test('addSong tanpa login ditolak', async () => {
-  const sb = fakeClient({ session: null });
-  await assert.rejects(createApi(sb).addSong(file('a.mp3'), { hash: 'h', duration: 1 }), /Belum masuk/);
+test('addSong tidak butuh sesi login (mode terbuka)', async () => {
+  const sb = fakeClient({ session: null, db: (q) => ({ data: op(q, 'insert')[0], error: null }) });
+  const song = await createApi(sb).addSong(file('a.mp3'), { hash: 'h', duration: 1 });
+  assert.match(song.audio_path, /^shared\//);
+  assert.ok(!('user_id' in song));
 });
 
 test('deleteSong: file dihapus dulu, baru record', async () => {
   const sb = fakeClient();
-  await createApi(sb).deleteSong({ id: 's1', audio_path: 'user-1/s1.mp3' });
+  await createApi(sb).deleteSong({ id: 's1', audio_path: 'shared/s1.mp3' });
   assert.equal(sb.calls[0].storage, 'remove');
   assert.equal(sb.calls[1].table, 'songs');
   assert.deepEqual(op(sb.calls[1], 'eq'), ['id', 's1']);

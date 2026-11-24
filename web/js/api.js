@@ -38,14 +38,6 @@ export function createApi(sb, { bucket = 'audio' } = {}) {
     if (error) throw new ApiError(humanizeError(error), { cause: error });
   };
 
-  async function userId() {
-    const { data, error } = await sb.auth.getSession();
-    check(error);
-    const id = data?.session?.user?.id;
-    if (!id) throw new ApiError('Belum masuk. Silakan login.');
-    return id;
-  }
-
   return {
     // ---------- auth ----------
     async signIn(email, password) {
@@ -76,14 +68,16 @@ export function createApi(sb, { bucket = 'audio' } = {}) {
 
     /** Unggah audio lalu buat record. Kalau insert gagal, file yang sudah terunggah dihapus lagi. */
     async addSong(file, { hash, duration }) {
-      const uid = await userId();
       const id = crypto.randomUUID();
       const ext = fileExt(file.name);
-      const path = `${uid}/${id}${ext ? '.' + ext : ''}`;
+      const path = `shared/${id}${ext ? '.' + ext : ''}`; // satu pengguna: satu folder bersama
       const mime = guessMime(file);
       const name = file.name.replace(/\.[^.]*$/, '').trim() || 'Tanpa judul';
 
-      const up = await sb.storage.from(bucket).upload(path, file, { contentType: mime, upsert: false });
+      // supabase-js memakai file.type (bukan opsi contentType) untuk badan multipart. Safari sering memberi
+      // type kosong (m4a), yang akan terkirim sebagai octet-stream dan ditolak bucket. Bungkus dengan tipe yang benar.
+      const body = file instanceof Blob ? new Blob([file], { type: mime }) : file;
+      const up = await sb.storage.from(bucket).upload(path, body, { contentType: mime, upsert: false });
       check(up.error);
       const { data, error } = await sb.from('songs').insert({
         id, name, audio_path: path, audio_mime: mime, size_bytes: file.size,
