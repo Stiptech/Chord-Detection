@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+.pytest_cache/
+
+# Audio dan cache tidak di-commit. Label (.lab) sengaja ikut di-commit: itu dataset koreksi.
+data/audio/*
+data/cache/*
+data/*.db
+!data/audio/.gitkeep
+!data/cache/.gitkeep
+*.wav
+*.mp3
+*.mp4
+*.m4a
