@@ -6,7 +6,7 @@ Aplikasi lokal untuk mendeteksi chord dari file audio/video atau link, lalu meng
 > dipakai dan akan dihapus di fase akhir; engine, format label, dan tes Python tetap sebagai acuan
 > dan alat evaluasi offline. Penyimpanan lintas perangkat (database) sedang diputuskan.
 
-Status: Fase 1, 2, 2b (Python) selesai. Fase A (engine JS), Fase B (Supabase + daftar lagu), dan **Fase C (pemutar chord)** selesai; berjalan tanpa login (mode terbuka). Editor koreksi menyusul (Fase D).
+Status: Fase 1, 2, 2b (Python) selesai. Fase A (engine JS), B (Supabase + daftar lagu), C (pemutar chord), dan **D (editor koreksi)** selesai; berjalan tanpa login (mode terbuka). Evaluasi menyusul (Fase E).
 
 ## Supabase (database + penyimpanan audio lintas perangkat)
 
@@ -62,6 +62,29 @@ Dibuka dari tombol **▶ Buka pemutar** di kartu lagu (`player.html?id=<id lagu>
 - Audio dialirkan dari Supabase Storage lewat URL bertanda tangan (6 jam) yang mendukung HTTP Range, jadi seek bekerja; kalau URL
   gagal/kedaluwarsa, pemutar meminta yang baru dan lanjut dari posisi yang sama.
 - Menampilkan versi `corrected` bila ada, kalau tidak hasil mesin (belum dikoreksi).
+
+## Editor koreksi (Fase D): di halaman pemutar
+
+Tombol **✎ Mode edit**. Hasil mesin hanya tebakan awal; koreksi disimpan sebagai versi `corrected` dan **tidak pernah menimpa**
+hasil mesin (`auto`).
+
+- **Memilih segmen:** ketuk kotak chord di lini waktu (playhead pindah ke awalnya). Kotak yang berbeda dari hasil mesin diberi garis kuning.
+- **Mengganti chord:** pilih *nada dasar* (12 tombol, ejaan ♯/♭ mengikuti key), *jenis* (maj, m, sus2, sus4, 7, maj7, m7, add9, ...),
+  *bass* untuk slash chord (mis. `D/F#`), `N` untuk tanpa chord, atau **ketik manual** (divalidasi). Berlaku langsung dan bisa diurungkan.
+- **Ganti semua:** setelah mengubah satu segmen (mis. `Dsus2` → `D`), muncul tombol "Ganti semua `Dsus2` lain → `D` (n)" dengan konfirmasi.
+- **Operasi:** pecah di playhead, gabung dengan sebelumnya/berikutnya, hapus (waktunya diserap tetangga), geser batas awal/akhir
+  (±0,1 dan ±0,5 detik atau "= playhead"), geser playhead ±0,1/±1 detik, dan **Loop segmen ini** untuk mendengarkan satu chord berulang-ulang.
+  Durasi segmen minimal 0,1 detik; segmen tidak bisa saling tumpang tindih.
+- **Simpan otomatis** 0,8 detik setelah perubahan terakhir, dengan indikator ("Menyimpan…", "Tersimpan ✓", atau "Gagal… ketuk untuk coba lagi").
+  Menutup tab saat belum tersimpan memunculkan peringatan; berpindah tab/keluar mode edit menyimpan lebih dulu.
+- **Urungkan / Ulangi** sampai 100 langkah (Ctrl+Z / Ctrl+Shift+Z di laptop). **Kembalikan ke hasil mesin** (dengan konfirmasi) pun bisa diurungkan.
+- **⇄ Bandingkan dengan mesin:** dua baris sejajar (Mesin dan Koreksi, lebar sebanding durasi); segmen yang berbeda diberi warna.
+  Ketuk baris untuk melompat; di mode edit, ketuk kotak "Koreksi" untuk memilihnya.
+- Mode edit menampilkan chord **asli** (tanpa transpose/capo) supaya yang diedit sama dengan yang tersimpan; kontrol transpose/capo dinonaktifkan
+  selama mengedit. Saat keluar, key ditebak ulang dari hasil koreksi.
+
+Batasan: tidak ada penguncian antar perangkat; bila dua perangkat mengedit lagu yang sama, yang terakhir menyimpan menang.
+Editor panjang di layar HP (kamu perlu menggulir dari lini waktu ke panel); tata letak ini belum diuji di Safari iPad.
 
 ## Engine JavaScript (`web/js/`)
 

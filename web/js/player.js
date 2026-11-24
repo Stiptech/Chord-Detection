@@ -1,9 +1,13 @@
-// Pemutar: audio + chord sinkron, lini waktu, kecepatan, loop A-B, transpose, capo.
+// Pemutar: audio + chord sinkron, lini waktu, kecepatan, loop A-B, transpose, capo,
+// mode edit (koreksi) dan perbandingan hasil mesin vs koreksi.
 import { supabase } from './supabase.js';
 import { createApi, humanizeError } from './api.js';
 import { REQUIRE_LOGIN } from './supabase-config.js';
 import { spellingForKey, transposeChord, estimateKey, keyName } from './transpose.js';
 import { findSegmentIndex, nextChordIndex, loopJump, fmtTime, clamp } from './player-logic.js';
+import { diffMarks } from './edit-logic.js';
+import { createEditor } from './editor.js';
+import { h } from './dom.js';
 
 const api = createApi(supabase);
 const $ = (id) => document.getElementById(id);
@@ -13,12 +17,14 @@ const SPEEDS = [0.5, 0.75, 1, 1.25];
 const SPELLINGS = [['auto', 'Otomatis'], ['sharp', '♯'], ['flat', '♭']];
 const PX_PER_SEC = 40; // lebar kotak lini waktu ~ durasi chord
 const MIN_BOX_PX = 60; // dan tidak pernah lebih kecil dari target sentuh
+const CMP_PX_PER_SEC = 30; // tampilan bandingkan: lebar persis sebanding durasi supaya dua baris sejajar
 const USER_SCROLL_PAUSE_MS = 2500; // setelah pengguna menggeser lini waktu, auto-scroll berhenti sebentar
 
 const st = {
-  song: null, segs: [], key: null, boxes: [],
+  song: null, segs: [], autoSegs: null, key: null, boxes: [],
   idx: -2, loopA: null, loopB: null, speed: 1,
   transpose: 0, capo: 0, spelling: 'auto',
+  editing: false, compareOn: false, version: 'auto', selected: null,
   raf: 0, lastUserScroll: 0, wakeLock: null, urlRetries: 0,
 };
 
@@ -52,28 +58,37 @@ function savePrefs() {
 
 // ---------- nama chord yang ditampilkan ----------
 
-const shapeShift = () => st.transpose - st.capo; // bentuk chord yang dimainkan = nada dasar - capo
+// Di mode edit chord ditampilkan apa adanya (tanpa transpose/capo) supaya yang diedit = yang tersimpan.
+const shapeShift = () => (st.editing ? 0 : st.transpose - st.capo); // bentuk yang dimainkan = nada dasar - capo
 
 function spellFor(tonicPc) {
   if (st.spelling !== 'auto') return st.spelling;
   return st.key ? spellingForKey(tonicPc, st.key.mode) : 'sharp';
 }
+const editSpelling = () => spellFor(st.key?.tonicPc ?? 0);
 const show = (label) => (label === 'N' ? '–' : transposeChord(label, shapeShift(), spellFor((st.key?.tonicPc ?? 0) + shapeShift())));
 
 function keyText() {
   if (!st.key) return 'Key: ?';
   const { tonicPc, mode } = st.key;
-  const sound = (tonicPc + st.transpose + 120) % 12;
+  const sound = (tonicPc + (st.editing ? 0 : st.transpose) + 120) % 12;
   const shape = (tonicPc + shapeShift() + 120) % 12;
   const soundName = keyName(sound, mode, spellFor(sound));
-  if (!st.capo) return `Key: ${soundName}`;
+  if (st.editing || !st.capo) return `Key: ${soundName}`;
   return `Key: ${soundName} · Capo ${st.capo} · Bentuk: ${keyName(shape, mode, spellFor(shape))}`;
 }
 
-// ---------- tampilan chord aktif + lini waktu ----------
+// ---------- lini waktu ----------
+
+function onBoxClick(i) {
+  st.lastUserScroll = 0;
+  if (st.editing) editor.select(i);
+  else seekTo(st.segs[i].start + 0.001);
+}
 
 function buildTimeline() {
   const tl = $('timeline');
+  const keepScroll = tl.scrollLeft;
   tl.replaceChildren();
   st.boxes = st.segs.map((s, i) => {
     const b = document.createElement('button');
@@ -82,13 +97,20 @@ function buildTimeline() {
     b.className = 'tl-box' + (s.label === 'N' ? ' none' : '');
     b.style.width = `${Math.max(MIN_BOX_PX, (s.end - s.start) * PX_PER_SEC)}px`;
     b.append(document.createElement('strong'), document.createElement('small'));
-    b.addEventListener('click', () => { st.lastUserScroll = 0; seekTo(s.start + 0.001); });
+    b.addEventListener('click', () => onBoxClick(i));
     tl.append(b);
     return b;
   });
-  for (const ev of ['pointerdown', 'wheel', 'touchstart']) {
-    tl.addEventListener(ev, () => { st.lastUserScroll = Date.now(); }, { passive: true });
-  }
+  tl.scrollLeft = keepScroll;
+}
+
+/** Tanda pada kotak: terpilih (edit) dan berbeda dari hasil mesin. */
+function decorate() {
+  const marks = st.editing && st.autoSegs ? diffMarks(st.segs, st.autoSegs).a : null;
+  st.boxes.forEach((b, i) => {
+    b.classList.toggle('sel', st.selected === i);
+    b.classList.toggle('diff', !!marks?.[i]);
+  });
 }
 
 function refreshLabels() {
@@ -97,6 +119,9 @@ function refreshLabels() {
     b.lastChild.textContent = fmtTime(st.segs[i].start);
   });
   $('keyInfo').textContent = keyText();
+  document.body.classList.toggle('editing', st.editing);
+  decorate();
+  if (st.compareOn) renderCompare();
   st.idx = -2; // paksa perbarui panggung
   syncUI();
 }
@@ -112,6 +137,7 @@ function syncUI() {
   const t = audio.currentTime || 0;
   if (!st.seeking) $('seek').value = String(t);
   $('curTime').textContent = fmtTime(t);
+  if (st.compareOn) moveCompareHead(t);
 
   const idx = findSegmentIndex(st.segs, t);
   if (idx === st.idx) return;
@@ -133,6 +159,117 @@ function syncUI() {
 function seekTo(t) {
   audio.currentTime = clamp(t, 0, duration() || t);
   syncUI();
+}
+
+// ---------- bandingkan hasil mesin vs koreksi ----------
+
+function renderCompare() {
+  const wrap = $('compare');
+  const d = duration();
+  const marks = st.autoSegs ? diffMarks(st.autoSegs, st.segs) : { a: [], b: [] };
+  const keepScroll = wrap.querySelector('.cmp-scroll')?.scrollLeft ?? 0;
+
+  const row = (caption, segs, flags, corrected) => [
+    h('span', { class: 'cmp-cap' }, caption),
+    h('div', {
+      class: 'cmp-row',
+      onclick: (e) => {
+        const x = e.clientX - e.currentTarget.getBoundingClientRect().left;
+        st.lastUserScroll = 0;
+        seekTo(x / CMP_PX_PER_SEC);
+      },
+    }, segs.map((s, i) => {
+      const w = Math.max(3, (s.end - s.start) * CMP_PX_PER_SEC);
+      return h('div', {
+        class: `cmp-box${flags[i] ? ' diff' : ''}${corrected && st.editing && st.selected === i ? ' sel' : ''}`,
+        style: `left:${s.start * CMP_PX_PER_SEC}px;width:${w}px`,
+        title: `${show(s.label)} · ${fmtTime(s.start)}`,
+        onclick: corrected && st.editing ? (e) => { e.stopPropagation(); editor.select(i); } : null,
+      }, w >= 26 ? show(s.label) : null);
+    })),
+  ];
+
+  const inner = h('div', { class: 'cmp-inner', style: `width:${Math.max(d, st.segs.at(-1)?.end ?? 0) * CMP_PX_PER_SEC}px` },
+    row('Mesin (auto)', st.autoSegs ?? [], marks.a, false),
+    row('Koreksi', st.segs, marks.b, true),
+    h('div', { class: 'cmp-head', id: 'cmpHead' }));
+  const nDiff = marks.b.filter(Boolean).length;
+  wrap.replaceChildren(
+    h('div', { class: 'cmp-scroll', id: 'cmpScroll' }, inner),
+    h('p', { class: 'cmp-legend muted' }, nDiff ? `${nDiff} segmen koreksi berbeda dari mesin (berwarna).` : 'Belum ada perbedaan dari hasil mesin.'));
+  $('cmpScroll').scrollLeft = keepScroll;
+  for (const ev of ['pointerdown', 'wheel', 'touchstart']) {
+    $('cmpScroll').addEventListener(ev, () => { st.lastUserScroll = Date.now(); }, { passive: true });
+  }
+  moveCompareHead(audio.currentTime || 0, false);
+}
+
+function moveCompareHead(t, follow = true) {
+  const head = $('cmpHead');
+  if (!head) return;
+  head.style.left = `${t * CMP_PX_PER_SEC}px`;
+  const sc = $('cmpScroll');
+  if (follow && !audio.paused && sc && Date.now() - st.lastUserScroll > USER_SCROLL_PAUSE_MS) {
+    const x = t * CMP_PX_PER_SEC;
+    if (x < sc.scrollLeft + 20 || x > sc.scrollLeft + sc.clientWidth - 40) sc.scrollLeft = x - sc.clientWidth / 3;
+  }
+}
+
+function setCompare(on) {
+  if (on && !st.autoSegs) { toast('Tidak ada hasil mesin untuk dibandingkan.'); return; }
+  st.compareOn = on;
+  $('compareToggle').setAttribute('aria-pressed', String(on));
+  $('compare').hidden = !on;
+  $('timeline').hidden = on;
+  if (on) renderCompare();
+}
+
+// ---------- mode edit ----------
+
+/** Dipanggil editor saat segmen berubah: pasang segmen baru, bangun ulang lini waktu, pertahankan posisi putar. */
+function setSegments(segs, selected) {
+  st.segs = segs;
+  st.selected = selected;
+  buildTimeline();
+  refreshLabels();
+  if (selected !== null) centerOnBox(selected);
+}
+
+function centerOnBox(i) {
+  const box = st.boxes[i], tl = $('timeline');
+  if (box && !tl.hidden) tl.scrollTo({ left: box.offsetLeft - (tl.clientWidth - box.offsetWidth) / 2, behavior: 'smooth' });
+}
+
+const editor = createEditor({
+  audio, api, toast, seekTo,
+  songId: () => st.song.id,
+  getSegs: () => st.segs,
+  setSegs: setSegments,
+  spelling: editSpelling,
+  duration,
+  setLoop: (a, b) => { st.loopA = a; st.loopB = b; updateLoopInfo(); },
+  autoSegs: () => st.autoSegs,
+  onSaved: () => {
+    st.version = 'corrected';
+    $('versionInfo').textContent = 'Versi koreksi';
+  },
+});
+
+async function setEditing(on) {
+  if (on === st.editing) return;
+  st.editing = on;
+  $('editToggle').setAttribute('aria-pressed', String(on));
+  for (const id of ['trDown', 'trUp', 'trReset', 'capoDown', 'capoUp']) $(id).disabled = on; // transpose/capo tidak berlaku saat edit
+  if (on) {
+    editor.enter();
+    st.selected = null;
+    toast('Mode edit: ketuk kotak chord untuk mengedit.');
+  } else {
+    await editor.exit(); // tunggu penyimpanan terakhir
+    st.selected = null;
+    st.key = estimateKey(st.segs); // key bisa berubah setelah koreksi
+  }
+  refreshLabels();
 }
 
 // ---------- pemutaran ----------
@@ -192,6 +329,7 @@ audio.addEventListener('loadedmetadata', () => {
   const d = duration();
   $('seek').max = String(d);
   $('totTime').textContent = fmtTime(d);
+  if (st.compareOn) renderCompare();
 });
 
 // URL bertanda tangan bisa kedaluwarsa atau gagal sesaat: minta yang baru lalu lanjutkan dari posisi yang sama.
@@ -275,10 +413,14 @@ function wireControls() {
   $('capoDown').addEventListener('click', () => changeShift(() => { st.capo = clamp(st.capo - 1, 0, 11); }));
   $('capoUp').addEventListener('click', () => changeShift(() => { st.capo = clamp(st.capo + 1, 0, 11); }));
 
+  $('editToggle').addEventListener('click', () => setEditing(!st.editing));
+  $('compareToggle').addEventListener('click', () => setCompare(!st.compareOn));
+
   // pintasan keyboard (laptop): spasi = putar/jeda, panah = ±5 dtk
   document.addEventListener('keydown', (e) => {
     const tag = e.target.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    if (e.ctrlKey || e.metaKey) return;
     if (e.code === 'Space' && tag !== 'BUTTON') { e.preventDefault(); togglePlay(); }
     else if (e.code === 'ArrowLeft') seekTo(audio.currentTime - 5);
     else if (e.code === 'ArrowRight') seekTo(audio.currentTime + 5);
@@ -304,11 +446,13 @@ function fail(message) {
     if (REQUIRE_LOGIN && !(await api.getSession())) { location.replace('index.html'); return; }
     const song = await api.getSong(id);
     if (!song) return fail('Lagu tidak ditemukan (mungkin sudah dihapus).');
-    const { version, segments } = await api.getLabelsWithFallback(id, 'corrected');
+    const [{ version, segments }, auto] = await Promise.all([api.getLabelsWithFallback(id, 'corrected'), api.getLabels(id, 'auto')]);
     if (!segments?.length) return fail('Lagu ini belum dianalisis. Kembali ke daftar lalu jalankan analisis.');
 
     st.song = song;
+    st.version = version;
     st.segs = [...segments].sort((a, b) => a.start - b.start);
+    st.autoSegs = auto?.length ? [...auto].sort((a, b) => a.start - b.start) : null;
     st.key = estimateKey(st.segs);
     loadPrefs();
     $('songTitle').textContent = song.name;

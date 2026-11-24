@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { transposeChord, spellingForKey, estimateKey, keyName, noteName } from '../web/js/transpose.js';
-import { findSegmentIndex, nextChordIndex, loopJump, fmtTime, clamp } from '../web/js/player-logic.js';
+import { findSegmentIndex, nextChordIndex, loopJump, fmtTime, fmtTimePrecise, clamp } from '../web/js/player-logic.js';
 import { createApi } from '../web/js/api.js';
 
 // ---------- transpose ----------
@@ -121,6 +121,16 @@ test('fmtTime dan clamp', () => {
   assert.equal(fmtTime(-3), '0:00');
   assert.equal(clamp(15, 0, 10), 10);
   assert.equal(clamp(-5, 0, 10), 0);
+});
+
+test('fmtTimePrecise: satu desimal, dibulatkan ke terdekat', () => {
+  assert.equal(fmtTimePrecise(0), '0:00.0');
+  assert.equal(fmtTimePrecise(65.34), '1:05.3');
+  assert.equal(fmtTimePrecise(59.99), '1:00.0');
+  assert.equal(fmtTimePrecise(5.95), '0:06.0');
+  assert.equal(fmtTimePrecise(5.94), '0:05.9');
+  assert.equal(fmtTimePrecise(600), '10:00.0');
+  assert.equal(fmtTimePrecise(NaN), '0:00.0');
 });
 
 // ---------- api.getSong ----------

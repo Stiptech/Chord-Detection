@@ -24,12 +24,18 @@
         <span id="versionInfo" class="muted"></span>
       </div>
 
+      <div class="modebar">
+        <button id="editToggle" class="btn small" type="button" aria-pressed="false">✎ Mode edit</button>
+        <button id="compareToggle" class="btn small" type="button" aria-pressed="false">⇄ Bandingkan dengan mesin</button>
+      </div>
+
       <div class="stage card">
         <div class="now"><span id="nowChord" class="now-chord">–</span></div>
         <div class="next"><span class="muted">berikut</span><span id="nextChord" class="next-chord">–</span></div>
       </div>
 
       <div id="timeline" class="timeline" role="list" aria-label="Lini waktu chord"></div>
+      <div id="compare" class="compare" hidden></div>
 
       <div class="seekrow">
         <span id="curTime" class="time">0:00</span>
@@ -42,6 +48,20 @@
         <button id="playBtn" class="btn primary tbtn play" type="button">▶ Putar</button>
         <button id="fwd5" class="btn tbtn" type="button">+5 dtk</button>
       </div>
+
+      <section id="editBar" class="card editbar" hidden>
+        <div class="editbar-top">
+          <strong>Mode edit</strong>
+          <span id="saveState" class="savestate muted" role="status" aria-live="polite">Belum ada perubahan</span>
+        </div>
+        <div class="row">
+          <button id="undoBtn" class="btn small" type="button">↶ Urungkan</button>
+          <button id="redoBtn" class="btn small" type="button">↷ Ulangi</button>
+          <button id="resetAutoBtn" class="btn small danger" type="button">Kembalikan ke hasil mesin</button>
+        </div>
+        <p class="muted small-note">Menampilkan chord asli (tanpa transpose/capo). Ketuk kotak chord di lini waktu untuk mengeditnya. Perubahan tersimpan otomatis ke versi koreksi; hasil mesin tidak pernah ditimpa.</p>
+      </section>
+      <section id="segEditor" class="card seged" hidden></section>
 
       <section class="card opts">
         <div class="opt">

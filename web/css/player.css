@@ -68,3 +68,52 @@
   .stage { grid-template-columns: 1fr; }
   .next { border-left: 0; padding-left: 0; border-top: 1px solid var(--line); padding-top: 8px; grid-auto-flow: column; justify-content: center; gap: 10px; }
 }
+
+/* ---------- Mode edit & bandingkan (Fase D) ---------- */
+.modebar { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 10px; }
+.modebar .btn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+
+.tl-box.sel { outline: 3px solid var(--warn); outline-offset: 1px; }
+.tl-box.diff { border-bottom: 4px solid var(--warn); }
+.editing .tl-box { cursor: pointer; }
+
+.editbar { display: grid; gap: 10px; margin: 6px 0 12px; border-color: var(--warn); }
+.editbar-top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 6px 12px; }
+.savestate { font-size: .9rem; font-weight: 600; }
+.savestate.ok { color: var(--ok); }
+.savestate.error { color: var(--bad); cursor: pointer; text-decoration: underline; }
+
+.seged { display: grid; gap: 14px; margin: 0 0 14px; }
+.seg-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.seg-label { font-size: 1.8rem; font-weight: 800; color: var(--accent); margin-left: auto; overflow-wrap: anywhere; }
+.pick-block { display: grid; gap: 6px; }
+.pick-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.pick-grid.wide { grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); }
+.pick-grid .btn { padding: 6px 4px; min-width: 0; }
+.pick-grid .btn:last-child:nth-child(13) { grid-column: span 6; }
+.pick-grid .btn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+.field, .txt {
+  min-height: 48px; padding: 8px 12px; font: inherit; color: var(--text);
+  background: var(--bg); border: 1px solid var(--line); border-radius: 10px;
+}
+.txt { flex: 1; min-width: 0; }
+.wide-btn { width: 100%; }
+.ops { display: flex; flex-wrap: wrap; gap: 8px; }
+.nudge { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.nudge-label { font-weight: 700; font-size: .9rem; min-width: 5.5em; }
+.nudge .btn { min-width: 52px; padding: 6px 8px; }
+
+/* Perbandingan auto vs koreksi: dua baris sejajar, lebar = durasi */
+.compare { margin: 8px 0 4px; }
+.cmp-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 6px; }
+.cmp-inner { position: relative; padding-top: 2px; }
+.cmp-cap { position: sticky; left: 0; display: block; font-size: .78rem; color: var(--muted); font-weight: 700; margin: 6px 0 2px; width: max-content; }
+.cmp-row { position: relative; height: 52px; background: color-mix(in srgb, var(--line) 35%, transparent); border-radius: 8px; cursor: pointer; }
+.cmp-box {
+  position: absolute; top: 2px; bottom: 2px; display: grid; place-items: center; overflow: hidden;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 6px; font-weight: 700; font-size: .85rem; white-space: nowrap;
+}
+.cmp-box.diff { background: color-mix(in srgb, var(--warn) 28%, var(--surface)); border-color: var(--warn); }
+.cmp-box.sel { outline: 3px solid var(--warn); }
+.cmp-head { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--accent); pointer-events: none; z-index: 2; }
+.cmp-legend { font-size: .85rem; margin: 4px 0 0; }

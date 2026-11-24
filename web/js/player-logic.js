@@ -5,6 +5,13 @@ export function fmtTime(sec) {
   return `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
 }
 
+/** Waktu dengan satu desimal (dibulatkan ke terdekat) untuk editor: 1:05.3 */
+export function fmtTimePrecise(sec) {
+  if (!Number.isFinite(sec) || sec < 0) sec = 0;
+  const tenths = Math.round(sec * 10);
+  return `${Math.floor(tenths / 600)}:${String(Math.floor((tenths % 600) / 10)).padStart(2, '0')}.${tenths % 10}`;
+}
+
 /** Indeks segmen yang sedang berbunyi pada waktu t, atau -1 (sebelum segmen pertama / di gap / setelah akhir). */
 export function findSegmentIndex(segs, t) {
   let lo = 0, hi = segs.length - 1, found = -1;
