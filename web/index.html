@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="color-scheme" content="light dark">
+  <title>Chord Finder</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="bar">
+    <h1>Chord Finder</h1>
+    <div id="userBox" class="userbox" hidden>
+      <span id="userEmail" class="muted"></span>
+      <button id="logoutBtn" class="btn small" type="button">Keluar</button>
+    </div>
+  </header>
+
+  <main>
+    <p id="loading" class="muted">Memuat…</p>
+
+    <section id="loginView" hidden>
+      <form id="loginForm" class="card form" autocomplete="on">
+        <h2>Masuk</h2>
+        <label>Email
+          <input id="email" type="email" name="email" autocomplete="username" inputmode="email" required>
+        </label>
+        <label>Password
+          <input id="password" type="password" name="password" autocomplete="current-password" required>
+        </label>
+        <p id="loginError" class="error" role="alert" hidden></p>
+        <button class="btn primary big" type="submit" id="loginBtn">Masuk</button>
+      </form>
+    </section>
+
+    <section id="listView" hidden>
+      <div class="add">
+        <label class="btn primary big" for="fileInput" id="addBtn">+ Tambah lagu</label>
+        <input id="fileInput" type="file" multiple hidden
+               accept="audio/*,video/mp4,.mp3,.m4a,.mp4,.wav,.aac,.ogg,.flac,.webm">
+        <p class="muted hint">Pilih file mp3, m4a, mp4, atau wav (maks 50 MB, 15 menit). Bisa juga seret file ke halaman ini.</p>
+      </div>
+      <div id="songList" class="list"></div>
+      <p id="emptyMsg" class="muted" hidden>Belum ada lagu. Tambahkan satu untuk memulai.</p>
+      <footer class="foot">
+        <button id="backupBtn" class="btn" type="button">Ekspor semua label (JSON)</button>
+      </footer>
+    </section>
+  </main>
+
+  <input id="labInput" type="file" accept=".lab,.txt,text/plain" hidden>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <div id="dropOverlay" class="drop" hidden>Lepas file di sini</div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

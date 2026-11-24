@@ -144,6 +144,31 @@ export function parseLab(text, sourceName = 'lab') {
   return segments;
 }
 
+/**
+ * Validasi + normalisasi segmen dari UI/impor (port validate_segments di Python).
+ * Waktu dibulatkan ke milidetik (sama dengan isi .lab). Gap antar segmen diperbolehkan.
+ * @returns {{start:number,end:number,label:string}[]} segmen baru; lempar Error berpesan jelas bila tidak valid
+ */
+export function validateSegments(items) {
+  if (!Array.isArray(items) || items.length === 0) throw new Error('Minimal harus ada 1 segmen.');
+  const out = [];
+  items.forEach((it, i) => {
+    const n = i + 1;
+    if (!Number.isFinite(it?.start) || !Number.isFinite(it?.end)) throw new Error(`Segmen ${n}: waktu harus berupa angka biasa.`);
+    const start = Math.round(it.start * 1000) / 1000;
+    const end = Math.round(it.end * 1000) / 1000;
+    const label = String(it.label ?? '').trim();
+    if (start < 0) throw new Error(`Segmen ${n}: waktu mulai tidak boleh negatif.`);
+    if (end <= start) throw new Error(`Segmen ${n}: waktu akhir harus setelah waktu mulai.`);
+    if (!isValidChord(label)) throw new Error(`Segmen ${n}: chord '${label}' tidak valid.`);
+    if (out.length && start < out[out.length - 1].end) {
+      throw new Error(`Segmen ${n}: tumpang tindih atau tidak berurutan dengan segmen sebelumnya.`);
+    }
+    out.push({ start, end, label });
+  });
+  return out;
+}
+
 export function formatLab(segments) {
   return segments.map((s) => `${s.start.toFixed(3)}\t${s.end.toFixed(3)}\t${s.label}\n`).join('');
 }

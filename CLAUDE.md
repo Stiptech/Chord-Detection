@@ -7,11 +7,14 @@ koreksi manual disimpan sebagai dataset label. Spesifikasi lengkap ada di `chord
 Web statis yang jalan di browser, deploy ke Netlify dari GitHub (folder `web/`, tanpa build step, tanpa framework).
 Analisis chord dilakukan di browser (`web/js/`); Python (`app/`, `tests/`, `scripts/`) tetap sebagai acuan,
 tes kesamaan, dan evaluasi offline. Backend FastAPI (`app/main.py`, `storage.py`, `download.py`) tidak lagi
-dipakai dan dihapus di fase akhir. Fitur tempel link YouTube dilepas. Penyimpanan lintas perangkat
-(database) masih menunggu keputusan pengguna. Jangan push ke GitHub tanpa diminta.
-Tes JS: `npm test`.
+dipakai dan dihapus di fase akhir. Fitur tempel link YouTube dilepas.
+Data lintas perangkat: Supabase project `chord-finder` (Postgres songs + label_versions, bucket privat `audio`,
+login email/password satu akun, RLS per pengguna; skema di `supabase/schema.sql`). Klien: `web/js/api.js`
+(klien disuntikkan agar bisa diuji tanpa jaringan). Pengguna memberi izin penuh untuk urusan project ini;
+jangan sentuh project Supabase lain milik mereka. Password akun dibuat pengguna sendiri.
+Tes JS: `npm test`. Render UI diuji di browser dengan klien Supabase palsu (import map), tanpa login sungguhan.
 
-Fase: A engine JS (selesai) -> B penyimpanan + daftar lagu -> C pemutar -> D koreksi -> E evaluasi -> F deploy/PWA.
+Fase: A engine JS (selesai) -> B login + penyimpanan + daftar lagu (selesai) -> C pemutar -> D koreksi -> E evaluasi -> F deploy/PWA.
 
 ## Prinsip
 - Sederhana dan mudah diubah. Tanpa auth, tanpa cloud, tanpa ORM, frontend vanilla tanpa build step.

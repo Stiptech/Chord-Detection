@@ -6,7 +6,7 @@ Aplikasi lokal untuk mendeteksi chord dari file audio/video atau link, lalu meng
 > dipakai dan akan dihapus di fase akhir; engine, format label, dan tes Python tetap sebagai acuan
 > dan alat evaluasi offline. Penyimpanan lintas perangkat (database) sedang diputuskan.
 
-Status: Fase 1, 2, 2b (Python) selesai. **Fase A (engine JavaScript) selesai**; UI menyusul.
+Status: Fase 1, 2, 2b (Python) selesai. Fase A (engine JavaScript) dan **Fase B (login, penyimpanan Supabase, daftar lagu)** selesai; pemutar menyusul.
 
 ## Setup Supabase (database + penyimpanan audio lintas perangkat)
 
@@ -23,6 +23,28 @@ Satu kali, di https://supabase.com (gratis):
 5. **Project Settings -> API Keys**: salin **Project URL** dan **publishable key** (kunci lama bernama *anon*). Kedua nilai ini memang publik dan aman ada di kode web, karena data dilindungi RLS + login. **Jangan pernah** memasukkan `service_role`/*secret* key atau database password ke kode atau repo.
 
 Catatan free tier: project dijeda otomatis kalau tidak aktif 7 hari (data tetap aman, tinggal *Restore* di dashboard); storage 1 GB; maksimal 50 MB per file.
+
+## Aplikasi web (Fase B: login + daftar lagu)
+
+Buka `web/index.html` lewat server statis (modul ES tidak jalan dari `file://`). Contoh lokal:
+
+```powershell
+cd web
+python -m http.server 8000      # lalu buka http://localhost:8000
+```
+
+1. Masuk dengan email + password akun yang kamu buat di Supabase (langkah 3 di atas).
+2. **+ Tambah lagu** (atau seret file): file dibaca dan didekode di browser, diunggah ke Supabase Storage,
+   dianalisis di Web Worker, lalu hasilnya disimpan ke database (versi `baseline` dan `auto`).
+   Satu file satu kali (hemat RAM iPad). Batas: 50 MB dan 15 menit. File yang sama (hash isi) ditolak.
+3. **Lihat chord**, **Analisis ulang** (mengunduh audio lalu menganalisis lagi), **Ekspor .lab**
+   (koreksi bila ada, kalau tidak hasil mesin), **Impor .lab** (jadi versi `corrected`), **Hapus**
+   (audio + semua label), dan **Ekspor semua label (JSON)** sebagai cadangan.
+4. Analisis yang terputus (tab ditutup) tampil sebagai "Terputus" dan bisa diulang. Daftar lagu
+   disegarkan otomatis saat tab kembali aktif, jadi perubahan dari perangkat lain muncul.
+
+Tes: `npm test` (tanpa jaringan; klien Supabase dipalsukan). Pemutar chord, lini waktu, dan editor koreksi
+menyusul di Fase C dan D.
 
 ## Engine JavaScript (`web/js/`)
 
