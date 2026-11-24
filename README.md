@@ -1,7 +1,28 @@
 # Chord Finder (pribadi, lagu rohani)
 
 Aplikasi lokal untuk mendeteksi chord dari file audio/video atau link, lalu mengoreksinya.
-Status: **Fase 1 (engine CLI), Fase 2 (backend API), dan Fase 2b (input dari link) selesai**. Web UI menyusul.
+> **Arah proyek berubah (2026-11-24):** aplikasi akan jadi **web statis yang jalan di browser**
+> (deploy ke Netlify), bukan server Python. Backend FastAPI di bawah (Fase 2 dan 2b) tidak lagi
+> dipakai dan akan dihapus di fase akhir; engine, format label, dan tes Python tetap sebagai acuan
+> dan alat evaluasi offline. Penyimpanan lintas perangkat (database) sedang diputuskan.
+
+Status: Fase 1, 2, 2b (Python) selesai. **Fase A (engine JavaScript) selesai**; UI menyusul.
+
+## Engine JavaScript (`web/js/`)
+
+Port baseline Python ke JavaScript murni, tanpa dependensi dan tanpa build step; modul yang sama
+dipakai browser dan Node. Tes: `npm test` (memakai `node --test`, Node 20+).
+
+| Berkas | Isi |
+|---|---|
+| `config.js` | semua parameter yang bisa dituning (suhu softmax, transisi, segmen minimum, FFT, ...) |
+| `fft.js`, `chroma.js` | FFT radix-2 dan chroma dari STFT (jendela 8192, hop 2048) |
+| `baseline.js` | template, softmax, Viterbi, penggabungan segmen, `detect(samples, sampleRate)` |
+| `labels.js` | baca/tulis `.lab`, validasi chord, konversi Harte dua arah |
+
+Beda dengan Python: chroma dari FFT (bukan CQT) dan tanpa pemisahan harmonik/perkusif (HPSS).
+Pada audio sintetis (termasuk harmonik banyak, bass, dan noise) hasilnya sama dengan Python;
+pada lagu asli kemungkinan berbeda dan perlu dituning dengan lagumu.
 
 ## Instalasi
 

@@ -3,6 +3,16 @@
 Aplikasi lokal untuk satu pengguna: deteksi chord dari audio/video/link, tampil sinkron dengan lagu,
 koreksi manual disimpan sebagai dataset label. Spesifikasi lengkap ada di `chord-finder-prompt.md`.
 
+## Arsitektur (diputuskan 2026-11-24)
+Web statis yang jalan di browser, deploy ke Netlify dari GitHub (folder `web/`, tanpa build step, tanpa framework).
+Analisis chord dilakukan di browser (`web/js/`); Python (`app/`, `tests/`, `scripts/`) tetap sebagai acuan,
+tes kesamaan, dan evaluasi offline. Backend FastAPI (`app/main.py`, `storage.py`, `download.py`) tidak lagi
+dipakai dan dihapus di fase akhir. Fitur tempel link YouTube dilepas. Penyimpanan lintas perangkat
+(database) masih menunggu keputusan pengguna. Jangan push ke GitHub tanpa diminta.
+Tes JS: `npm test`.
+
+Fase: A engine JS (selesai) -> B penyimpanan + daftar lagu -> C pemutar -> D koreksi -> E evaluasi -> F deploy/PWA.
+
 ## Prinsip
 - Sederhana dan mudah diubah. Tanpa auth, tanpa cloud, tanpa ORM, frontend vanilla tanpa build step.
 - Hasil mesin hanyalah tebakan awal; koreksi manual adalah alur utama.

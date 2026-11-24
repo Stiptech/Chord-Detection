@@ -1,0 +1,9 @@
+{
+  "name": "chord-finder",
+  "private": true,
+  "type": "module",
+  "description": "Chord Finder pribadi. Tanpa dependensi dan tanpa build step; package.json ini hanya untuk menjalankan tes JS (node --test).",
+  "scripts": {
+    "test": "node --test js-tests/*.test.js"
+  }
+}

@@ -12,3 +12,5 @@ data/*.db
 *.mp3
 *.mp4
 *.m4a
+
+node_modules/
