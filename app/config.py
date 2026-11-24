@@ -6,6 +6,8 @@ DATA_DIR = ROOT / "data"
 AUDIO_DIR = DATA_DIR / "audio"
 LABELS_DIR = DATA_DIR / "labels"
 CACHE_DIR = DATA_DIR / "cache"
+DB_PATH = DATA_DIR / "chordfinder.db"
+STATIC_DIR = ROOT / "app" / "static"
 
 FFMPEG_BIN = "ffmpeg"
 

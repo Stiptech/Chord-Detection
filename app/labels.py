@@ -158,4 +158,7 @@ def write_lab(path: str | Path, segments: list[Segment]) -> None:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     lines = [f"{s.start:.3f}\t{s.end:.3f}\t{s.label}\n" for s in segments]
-    path.write_text("".join(lines), encoding="utf-8", newline="")
+    # Tulis ke file sementara lalu ganti, supaya simpan otomatis tidak pernah meninggalkan file setengah jadi.
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text("".join(lines), encoding="utf-8", newline="")
+    tmp.replace(path)

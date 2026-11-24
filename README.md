@@ -1,7 +1,7 @@
 # Chord Finder (pribadi, lagu rohani)
 
 Aplikasi lokal untuk mendeteksi chord dari file audio/video atau link, lalu mengoreksinya.
-Status: **Fase 1 selesai** (engine baseline lewat CLI). Web UI menyusul di fase berikutnya.
+Status: **Fase 1 (engine CLI) dan Fase 2 (backend API) selesai**. Link YouTube (2b) dan web UI menyusul.
 
 ## Instalasi
 
@@ -28,6 +28,42 @@ Mencetak segmen (`mulai akhir chord`) dan menulis `data/labels/lagu.baseline.lab
 Tanpa ffmpeg, wav pun tetap lewat ffmpeg sehingga akan muncul pesan cara memasangnya.
 
 Tes: `.\.venv\Scripts\python.exe -m pytest -q`
+
+## Menjalankan server (Fase 2)
+
+```powershell
+.\run.ps1          # Mac/Linux: ./run.sh
+```
+
+Server jalan di `0.0.0.0:8000`. Buka **http://localhost:8000/docs** untuk mencoba semua endpoint
+dari browser (halaman web aslinya baru ada di Fase 3). Dari iPad: cari IP laptop (`ipconfig`),
+buka `http://IP:8000/docs`; kalau tidak bisa, izinkan Python di Windows Firewall untuk jaringan privat.
+
+Contoh lewat terminal:
+```powershell
+curl.exe -F "file=@lagu.mp3" http://localhost:8000/api/songs          # -> {"id": 1, ...}
+curl.exe -X POST "http://localhost:8000/api/songs/1/analyze"          # jalan di background
+curl.exe http://localhost:8000/api/songs/1                            # poll: status uploaded/analyzing/ready/error
+curl.exe http://localhost:8000/api/songs/1/chords
+```
+
+| Endpoint | Fungsi |
+|---|---|
+| `POST /api/songs` | upload file (multipart, field `file`) |
+| `GET /api/songs`, `GET /api/songs/{id}` | daftar lagu / satu lagu (untuk polling status) |
+| `POST /api/songs/{id}/analyze?detector=baseline` | analisis di background; 409 bila sedang berjalan |
+| `GET /api/songs/{id}/chords?version=auto\|corrected` | segmen JSON. `corrected` yang belum ada = salinan `auto` (field `version` menyebut mana yang dikirim). Nama detector juga boleh jadi `version`. |
+| `PUT /api/songs/{id}/chords` | simpan koreksi: `{"segments":[{"start","end","label"}]}`. Ditolak (422) bila tumpang tindih, tidak berurutan, durasi nol, atau chord tak valid. Gap antar segmen diperbolehkan. |
+| `GET /api/songs/{id}/audio` | stream audio dengan HTTP Range (seek di Safari) |
+| `GET /api/songs/{id}/export?format=lab\|txt&version=corrected` | unduh label; `txt` = 4 chord per baris tanpa `N` |
+| `DELETE /api/songs/{id}` | hapus audio + semua label lagu itu (cache wav dibiarkan; dipakai bersama) |
+
+File label per lagu di `data/labels/`: `<id>.auto.lab` (analisis terakhir, tidak pernah disentuh
+koreksi), `<id>.<detector>.lab` (tiap detector), `<id>.corrected.lab` (koreksimu). Analisis ulang
+menimpa `auto` tapi tidak pernah `corrected`.
+
+Keputusan sederhana: id lagu berupa angka yang tidak dipakai ulang; kalau server mati di tengah
+analisis, lagu itu ditandai `error` saat server hidup lagi (bisa dianalisis ulang).
 
 ## Cara kerja detector baseline
 
