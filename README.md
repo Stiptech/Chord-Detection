@@ -75,9 +75,36 @@ dipakai browser dan Node. Tes: `npm test` (memakai `node --test`, Node 20+).
 | `baseline.js` | template, softmax, Viterbi, penggabungan segmen, `detect(samples, sampleRate)` |
 | `labels.js` | baca/tulis `.lab`, validasi chord, konversi Harte dua arah |
 
-Beda dengan Python: chroma dari FFT (bukan CQT) dan tanpa pemisahan harmonik/perkusif (HPSS).
-Pada audio sintetis (termasuk harmonik banyak, bass, dan noise) hasilnya sama dengan Python;
-pada lagu asli kemungkinan berbeda dan perlu dituning dengan lagumu.
+Beda dengan Python: chroma dari FFT (bukan CQT) dan tanpa HPSS; sebagai gantinya ada pembersihan chroma
+(lihat "Penyetelan detector"). Parameter JS berbeda dari `app/config.py` (Python) dan tidak perlu disamakan.
+
+## Penyetelan detector (JS)
+
+**Masalah yang ditemukan (2026-11-24):** pada lagu worship asli (Gibeon Worship, 4 menit) versi pertama membaca
+**69,9% waktu sebagai "N"** (tanpa chord), padahal semua tes sinyal sintetis lolos. Penyebabnya: chroma dari FFT linear pada
+rekaman nyata (pad, drum, vokal, reverb) menjadi hampir datar, sehingga template "N" (datar) menang. Detector Python
+(CQT + HPSS) pada lagu yang sama hanya 2,6% N.
+
+**Perbaikan** (`web/js/chroma.js`, `web/js/baseline.js`, `web/js/config.js`):
+1. Median sepanjang waktu per bin (`harmonicMedianFrames: 5`): menjaga nada yang bertahan, membuang transien/perkusi.
+2. Kurangi lantai broadband per frame (`whitenMult: 3`).
+3. Pangkat 1,5 pada magnitudo (`chromaPower`): mempertajam puncak nada terhadap derau.
+4. "N" hanya untuk frame hening (dipaksa); pada frame berbunyi N hanya menang bila chroma benar-benar datar (`noChordBias: -0.4`).
+5. `softmaxTemperature` 0,15 dan `transitionLoop` 0,95: lebih sedikit segmen pendek yang berganti-ganti.
+6. Penalti sus/7th sedikit diperkuat (`qualityBias`: sus -0.06, 7th -0.04).
+
+**Hasil pada lagu itu:** N 69,9% -> **1,2%**; kesepakatan dengan detector Python (root+jenis, per 0,1 dtk) 22% -> **76%**;
+123 segmen (Python 116); chord yang paling sering muncul hampir sama dengan Python; kecocokan dengan lembar chord pengguna
+(key F) kini memuncak tepat pada pergeseran -3 semitone (rekamannya di key D). Waktu analisis 4 menit audio < 1 detik di Node.
+
+**Catatan jujur:**
+- Hanya diuji pada **satu lagu**, dan tidak ada label benar per waktu (hanya lembar chord tanpa waktu). Python dipakai sebagai
+  pembanding, bukan kebenaran. Angka di atas adalah ukuran pendekatan, bukan akurasi sesungguhnya.
+  Akurasi nyata baru terukur setelah ada koreksi manual (Fase D) dan evaluasi (Fase E).
+- **sus2/sus4 masih sering terbaca** (Dsus2, Gsus2, Asus2 ~ 25% durasi), padahal lembar chord hampir tanpa sus. Itu ambiguitas
+  bawaan (D dengan nada E dari pad = Dsus2). Nilai `qualityBias` adalah penilaian, bukan fakta; geser sesuai selera.
+- Tes regresi (`js-tests/baseline.test.js`) memakai sinyal sintetis berderau tinggi yang membuat pengaturan lama gagal (N 100%)
+  tetapi pengaturan sekarang tetap benar. Pada derau rendah, sinyal sintetis tidak pernah memperlihatkan masalah ini.
 
 ## Instalasi
 

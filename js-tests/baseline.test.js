@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { FFT } from '../web/js/fft.js';
 import { binToPitchClass, computeChroma } from '../web/js/chroma.js';
 import { buildTemplates, detect, mergeShortSegments, viterbiLoop, VOCAB_SUFFIXES } from '../web/js/baseline.js';
-import { SR, chordTone, concat, silence, labelsOf } from './helpers.js';
+import { SR, chordTone, concat, silence, labelsOf, freq } from './helpers.js';
 
 const near = (a, b, tol) => assert.ok(Math.abs(a - b) <= tol, `${a} tidak dekat ${b} (±${tol})`);
 
@@ -125,6 +125,62 @@ test('chord ke-7: Cmaj7-Dm7-G7-Am', () => {
 test('hening di antara chord jadi N', () => {
   const y = concat(chordTone(['C', 'E', 'G']), silence(2), chordTone(['G', 'B', 'D']));
   assert.deepEqual(labelsOf(detect(y, SR)), ['C', 'N', 'G']);
+});
+
+// ---------- regresi rekaman nyata ----------
+// Kegagalan nyata: pada lagu worship sungguhan versi lama membaca ~70% waktu sebagai "N" karena chroma
+// FFT datar akibat derau, perkusi, dan harmonik banyak, padahal sinyal sintetis bersih lolos semua tes.
+
+function lcg(seed) {
+  let s = seed;
+  return () => ((s = (s * 16807) % 2147483647) / 2147483647) - 0.5;
+}
+
+// Tingkat derau 8 (nada ~1): pengaturan lama (tanpa median waktu/whitening/pangkat) membaca 100% "N"
+// pada sinyal ini; pipeline sekarang tetap menemukan chord yang benar. Pada derau 0.8 keduanya lolos,
+// itu sebabnya sinyal sintetis bersih tidak pernah memperlihatkan kegagalannya.
+const NOISE = 8;
+
+/** Chord "realistis": 6 harmonik, bass dua oktaf di bawah, derau broadband, dan hi-hat tiap 0.25 dtk. */
+function messyChord(notes, seconds, seed) {
+  const n = Math.round(SR * seconds);
+  const y = new Float32Array(n);
+  const rnd = lcg(seed);
+  notes.forEach((note, idx) => {
+    const f = freq(note, 4);
+    for (let i = 0; i < n; i++) {
+      for (let h = 1; h <= 6; h++) y[i] += Math.sin((2 * Math.PI * f * h * i) / SR) / h;
+      if (idx === 0) y[i] += 1.5 * Math.sin((2 * Math.PI * (f / 4) * i) / SR);
+    }
+  });
+  const hat = Math.round(0.02 * SR), every = Math.round(0.25 * SR);
+  for (let i = 0; i < n; i++) {
+    y[i] += NOISE * rnd(); // derau latar
+    const p = i % every;
+    if (p < hat) y[i] += 6 * rnd() * Math.exp((-5 * p) / hat); // hi-hat
+  }
+  let peak = 0;
+  for (const v of y) peak = Math.max(peak, Math.abs(v));
+  return y.map((v) => (v / peak) * 0.5);
+}
+
+test('rekaman realistis (harmonik banyak + bass + derau + hi-hat): urutan benar dan N hampir tidak ada', () => {
+  const y = concat(
+    messyChord(['D', 'F#', 'A'], 3, 1), messyChord(['G', 'B', 'D'], 3, 2),
+    messyChord(['A', 'C#', 'E'], 3, 3), messyChord(['B', 'D', 'F#'], 3, 4),
+  );
+  const segs = detect(y, SR);
+  const nTime = segs.filter((s) => s.label === 'N').reduce((a, s) => a + s.end - s.start, 0);
+  assert.ok(nTime / 12 < 0.05, `N terlalu banyak: ${((100 * nTime) / 12).toFixed(1)}%`);
+  assert.deepEqual(labelsOf(segs), ['D', 'G', 'A', 'Bm']);
+});
+
+test('derau putih murni (tanpa nada) dibaca N, bukan chord acak', () => {
+  const rnd = lcg(9);
+  const noise = Float32Array.from({ length: SR * 6 }, () => rnd() * 0.5);
+  const segs = detect(noise, SR);
+  const nTime = segs.filter((s) => s.label === 'N').reduce((a, s) => a + s.end - s.start, 0);
+  assert.ok(nTime / 6 > 0.9, `N hanya ${((100 * nTime) / 6).toFixed(1)}%`);
 });
 
 test('audio kosong dan sangat pendek tidak error', () => {

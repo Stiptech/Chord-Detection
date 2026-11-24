@@ -54,13 +54,16 @@ export function chromaToProbs(chroma, numFrames, tpl, cfg = DEFAULTS) {
     norms[t] = Math.sqrt(sum);
   }
   const silenceFloor = Math.max(cfg.silenceRatio * percentile(norms, 95), 1e-8);
-  const flat = 1 / Math.sqrt(12);
 
   const probs = new Float64Array(numFrames * S);
   const x = new Float64Array(12);
   for (let t = 0; t < numFrames; t++) {
     const silent = norms[t] <= silenceFloor;
-    for (let c = 0; c < 12; c++) x[c] = silent ? flat : chroma[t * 12 + c] / Math.max(norms[t], 1e-8);
+    if (silent) {
+      probs[t * S + S - 1] = 1; // frame hening: pasti N (state terakhir); N tidak dipilih dari chroma datar
+      continue;
+    }
+    for (let c = 0; c < 12; c++) x[c] = chroma[t * 12 + c] / Math.max(norms[t], 1e-8);
     let max = -Infinity;
     for (let s = 0; s < S; s++) {
       let dot = 0;
