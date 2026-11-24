@@ -1,4 +1,4 @@
-"""Semua parameter yang bisa dituning ada di sini."""
+"""Parameter detector Python (acuan) dan lokasi data CLI. Detector yang dipakai aplikasi web ada di web/js/config.js."""
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -6,16 +6,9 @@ DATA_DIR = ROOT / "data"
 AUDIO_DIR = DATA_DIR / "audio"
 LABELS_DIR = DATA_DIR / "labels"
 CACHE_DIR = DATA_DIR / "cache"
-DB_PATH = DATA_DIR / "chordfinder.db"
-STATIC_DIR = ROOT / "app" / "static"
 
 FFMPEG_BIN = "ffmpeg"
 
-# --- Unduhan dari link (yt-dlp) ---
-MAX_DOWNLOAD_SEC = 15 * 60  # video lebih panjang ditolak (menghindari livestream/video berjam-jam)
-DOWNLOAD_SOCKET_TIMEOUT = 20  # detik; supaya tidak menggantung bila koneksi mati
-# Utamakan m4a (AAC): bisa diputar Safari/iPad. webm/opus tidak selalu bisa.
-DOWNLOAD_FORMAT = "bestaudio[ext=m4a]/bestaudio/best"
 
 # --- Audio ---
 SAMPLE_RATE = 22050

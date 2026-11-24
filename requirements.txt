@@ -1,11 +1,9 @@
-fastapi>=0.110
-uvicorn>=0.29
-python-multipart>=0.0.9
+# Alat Python (acuan, tes, dan evaluasi offline). Aplikasi web sendiri tanpa dependensi dan tanpa build.
 librosa>=0.10
 numpy
 scipy
 soundfile
 mir_eval
-yt-dlp
 pytest
-httpx  # dibutuhkan TestClient FastAPI
+# Opsional: ffmpeg tanpa pemasangan sistem (scripts/analyze_file.py memakai ffmpeg di PATH; lihat README)
+# imageio-ffmpeg

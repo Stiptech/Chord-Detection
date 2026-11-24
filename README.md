@@ -1,263 +1,116 @@
 # Chord Finder (pribadi, lagu rohani)
 
-Aplikasi lokal untuk mendeteksi chord dari file audio/video atau link, lalu mengoreksinya.
-> **Arah proyek berubah (2026-11-24):** aplikasi akan jadi **web statis yang jalan di browser**
-> (deploy ke Netlify), bukan server Python. Backend FastAPI di bawah (Fase 2 dan 2b) tidak lagi
-> dipakai dan akan dihapus di fase akhir; engine, format label, dan tes Python tetap sebagai acuan
-> dan alat evaluasi offline. Penyimpanan lintas perangkat (database) sedang diputuskan.
+Web statis (jalan sepenuhnya di browser) untuk mendeteksi chord dari file audio/video, memutarnya dengan chord yang sinkron,
+mengoreksi hasilnya, dan mengukur seberapa benar mesinnya. Data (lagu, audio, label) disimpan di Supabase sehingga sama di semua perangkat.
+Disajikan oleh Netlify dari folder `web/`: tanpa server Python, tanpa build, tanpa framework.
 
-Status: Fase 1, 2, 2b (Python) selesai. Fase A (engine JS), B (Supabase + daftar lagu), C (pemutar chord), D (editor koreksi), dan **E (evaluasi)** selesai; berjalan tanpa login (mode terbuka). Berikutnya: F (PWA/deploy). Detector pretrained (Fase 6) hanya bila diminta.
+**Status:** semua fase inti selesai (engine JS, penyimpanan, pemutar, editor koreksi, evaluasi, PWA). Detector pretrained (Fase 6)
+**belum dikerjakan** dan hanya akan dibuat bila diminta. Fitur tempel link YouTube dan backend FastAPI pernah ada, lalu dihapus
+(masih ada di riwayat git, commit `3448cc8` dan sebelumnya).
 
-## Supabase (database + penyimpanan audio lintas perangkat)
+## Memakai aplikasi
 
-Project `chord-finder` (Singapore, free tier) sudah dibuat dan skemanya terpasang ([`supabase/schema.sql`](supabase/schema.sql)).
-URL dan publishable key ada di `web/js/supabase-config.js` (nilai publik; **jangan** menaruh `service_role`/secret key
-atau database password di kode atau repo).
+Buka situsnya (alamat Netlify) di browser mana pun. Di iPad: Safari → Bagikan → **Tambah ke Layar Utama** agar terbuka seperti app.
+Di Chrome/Android/desktop ada tombol Pasang di bilah alamat.
 
-**Mode saat ini: terbuka, tanpa login.** Siapa pun yang membuka alamat situsnya bisa melihat, mengubah, dan menghapus
-lagu serta label, dan bisa mengunggah audio sampai kuota storage habis (bucket dibatasi 50 MB/file dan hanya audio/video).
-Alamat situs tidak dipublikasikan, tapi itu bukan keamanan sungguhan. Aman untuk data yang tidak sensitif; kunci kalau ragu.
+1. **Daftar lagu** (`index.html`): **+ Tambah lagu** (atau seret file). File dibaca dan didekode di browser, diunggah ke Supabase Storage,
+   dianalisis di Web Worker, lalu hasilnya disimpan. Satu file satu kali (hemat RAM iPad). Batas: 50 MB dan 15 menit. File yang sama (hash isi) ditolak.
+   Tersedia juga **Analisis ulang**, **Ekspor .lab**, **Impor .lab** (jadi versi koreksi), **Hapus**, dan **Ekspor semua label (JSON)** untuk cadangan.
+2. **Pemutar** (`player.html`, tombol **▶ Buka pemutar**): lihat bagian di bawah.
+3. **Mode edit** di pemutar untuk mengoreksi chord.
+4. **Statistik** (`stats.html`, tombol 📊): seberapa benar mesin dibanding koreksimu.
 
-**Mengunci nanti (satu akun):** ikuti urutan di [`supabase/lock-down.sql`](supabase/lock-down.sql): buat user di dashboard,
-matikan signup, jalankan skripnya, ubah `REQUIRE_LOGIN` ke `true` di `supabase-config.js`, lalu deploy ulang.
-Data yang sudah ada tetap utuh. Form login sudah tersedia di aplikasi.
+### Pemutar
 
-Catatan free tier: project dijeda otomatis kalau tidak aktif 7 hari (data tetap aman, tinggal *Restore* di dashboard);
-storage 1 GB.
+- **Chord aktif** besar di tengah, **chord berikutnya** lebih kecil di sampingnya; lini waktu horizontal yang ikut bergulir (ketuk kotak untuk melompat).
+- **Kontrol:** putar/jeda, ±5 detik, penggeser posisi, kecepatan 0.5×–1.25× (nada tetap), **loop A–B**, layar tetap menyala saat main.
+  Laptop: spasi = putar/jeda, panah = ±5 detik.
+- **Transpose** −6..+6 dan **capo** 0..11 hanya mengubah nama chord yang ditampilkan. Chord yang tampil = bentuk yang dimainkan (nada dasar dikurangi capo).
+  Ejaan ♯/♭ konsisten ("Otomatis" memilih flat untuk key berflat seperti F, Bb, Eb). **Key** ditebak dari chord (Krumhansl-Kessler) dan hanya tebakan.
+- Pengaturan transpose/capo/ejaan diingat per lagu di browser. Audio dialirkan dari Supabase lewat URL bertanda tangan yang mendukung HTTP Range (seek jalan).
 
-## Aplikasi web (Fase B: daftar lagu)
+### Mode edit (koreksi)
 
-Buka `web/index.html` lewat server statis (modul ES tidak jalan dari `file://`). Contoh lokal:
+Koreksi disimpan sebagai versi `corrected` dan **tidak pernah menimpa** hasil mesin (`auto`).
+- **Memilih segmen:** ketuk kotak chord. Kotak yang berbeda dari hasil mesin diberi garis kuning.
+- **Mengganti chord:** nada dasar (12 tombol), jenis (maj, m, sus2, sus4, 7, maj7, m7, add9, …), bass untuk slash chord (`D/F#`), `N`, atau ketik manual (divalidasi).
+  **Ganti semua:** setelah mengubah `Dsus2` → `D`, tombol "Ganti semua `Dsus2` lain → `D` (n)" muncul, dengan konfirmasi.
+- **Operasi:** pecah di playhead, gabung dengan sebelumnya/berikutnya, hapus (waktunya diserap tetangga), geser batas (±0,1 / ±0,5 detik atau "= playhead"),
+  geser playhead, dan **Loop segmen ini**. Durasi segmen minimal 0,1 detik; segmen tidak tumpang tindih.
+- **Simpan otomatis** 0,8 detik setelah perubahan terakhir, dengan indikator. **Urungkan/Ulangi** sampai 100 langkah (Ctrl+Z / Ctrl+Shift+Z).
+  **Kembalikan ke hasil mesin** (konfirmasi, bisa diurungkan). **⇄ Bandingkan dengan mesin**: dua baris sejajar, segmen berbeda diberi warna.
+- Mode edit menampilkan chord **asli** (tanpa transpose/capo). Tidak ada penguncian antar perangkat: bila dua perangkat mengedit lagu yang sama, yang menyimpan terakhir menang.
 
+### Statistik
+
+Acuannya adalah koreksimu; yang dinilai adalah hasil mesin (`auto` atau `baseline`/detector lain). Halaman menampilkan perbandingan versi, tabel per lagu,
+akurasi per jenis chord (mayor, minor, sus, add9, 7th, slash, N, lainnya), dan salah baca terbanyak (mis. `Dsus2 → D` berapa detik).
+Empat skor standar mir_eval: **root**, **majmin**, **thirds**, **sevenths**. "–" = tidak ada bagian yang bisa dibandingkan.
+
+Yang perlu dipahami:
+- **mir_eval mengabaikan nada ke-9**: `add9` dianggap mayor, `9` = `7`, `maj9` = `maj7`, `m9` = `m7`. Salah baca `Cadd9` → `C` tidak mengurangi skor mir_eval;
+  untuk itu ada tabel "persis sama" per jenis dan daftar salah baca. `majmin` dan `sevenths` mengecualikan chord acuan di luar kosakatanya (mis. sus);
+  `thirds` hanya melihat root dan ada tidaknya terts minor (sus dan mayor dianggap sama).
+- **Hanya sebagus koreksimu.** Bagian lagu yang belum kamu periksa masih berisi hasil mesin, sehingga dihitung "benar". Angka yang adil hanya untuk lagu yang
+  sudah diperiksa sampai habis.
+- Aturan: rentang evaluasi = rentang koreksi; mesin dipotong/diisi `N`; celah dianggap `N`; selisih batas < 0,1 detik tidak dihitung sebagai salah baca.
+
+## Deploy
+
+### Supabase (data lintas perangkat)
+Project `chord-finder` (Singapore, free tier) sudah dibuat. Skema, bucket audio privat, dan aturan akses ada di [`supabase/schema.sql`](supabase/schema.sql)
+(jalankan di SQL Editor untuk project baru). URL dan *publishable key* ada di `web/js/supabase-config.js`: keduanya **publik** dan memang ditaruh di kode;
+**jangan pernah** menaruh `service_role`/secret key atau database password di kode atau repo.
+Free tier: project dijeda otomatis bila tidak aktif 7 hari (data aman, tinggal *Restore* di dashboard); storage 1 GB.
+
+### Netlify
+Repo GitHub → Netlify → *Import an existing project*. Pengaturan (sudah dibaca dari `netlify.toml`): **Base directory** kosong, **Build command** kosong,
+**Publish directory** `web`, **Functions directory** kosong. Netlify otomatis men-deploy setiap push ke `main`.
+Jika situs mengembalikan HTTP 401, matikan **Team login** di Project configuration → Access & security → Visitor access.
+`netlify.toml` juga memasang header keamanan, termasuk **Content-Security-Policy** yang hanya mengizinkan skrip dari situs sendiri dan jsdelivr
+(supabase-js, versi terkunci) serta koneksi data/audio ke project Supabase di atas. **Bila project Supabase diganti, ubah alamatnya di `connect-src` dan `media-src`.**
+
+### Keamanan: mode terbuka
+Saat ini **tanpa login** (`REQUIRE_LOGIN = false`). Siapa pun yang tahu alamat situsnya bisa melihat, mengubah, dan menghapus lagu dan label, serta mengunggah
+audio sampai kuota habis (bucket dibatasi 50 MB/file dan hanya audio/video). Repo GitHub publik memuat alamat Supabase, jadi endpoint mudah ditemukan.
+**Mengunci ke satu akun:** ikuti urutan di [`supabase/lock-down.sql`](supabase/lock-down.sql) (buat user di dashboard, matikan signup, jalankan skripnya),
+ubah `REQUIRE_LOGIN` ke `true`, lalu deploy ulang. Data yang ada tetap utuh; form login sudah tersedia.
+
+### PWA
+`manifest.webmanifest`, ikon (`web/icons/`, dibangkitkan `scripts/make_icons.py` tanpa dependensi), dan `sw.js`. Service worker memakai strategi **jaringan dulu**
+(selalu versi terbaru; cache hanya cadangan) dan tidak menyentuh Supabase/CDN. Offline hanya cangkang aplikasinya yang terbuka; daftar lagu, audio, dan label
+tetap butuh internet.
+
+## Format data
+- Label `.lab`: `start<TAB>end<TAB>chord` per baris. Notasi chord: `C Dm Dsus2 Dsus4 C7 Cmaj7 Am7 Cadd9 G/B N`. Konversi Harte dua arah ada di `web/js/labels.js` dan `app/labels.py`.
+- Di database tiap lagu punya beberapa versi label: `auto` (analisis terakhir; tidak pernah ditimpa koreksi), nama detector (`baseline`), dan `corrected` (koreksimu).
+
+## Detector (JavaScript, `web/js/`)
+Chroma dari FFT (jendela 8192, hop 2048) → template (mayor, minor, sus2, sus4, 7, maj7, m7, N) → softmax → Viterbi → segmen → segmen < 0,3 detik diserap tetangga.
+Semua parameter ada di `web/js/config.js`.
+
+**Penyetelan (2026-11-24):** pada lagu worship asli versi pertama membaca **69,9% waktu sebagai "N"**, padahal tes sintetis lolos semua (chroma FFT pada rekaman
+nyata menjadi datar). Perbaikan: median waktu (penguat harmonik), pengurangan lantai broadband, pangkat 1,5, "N" hanya untuk hening, suhu softmax 0,15, transisi 0,95,
+penalti sus/7th. Hasil: N 69,9% → **1,2%**; kesepakatan dengan detector Python 22% → 76%. Keterbatasan: diuji pada **satu lagu** tanpa label benar berwaktu; Python
+hanya pembanding; **sus2/sus4 masih sering terbaca** (ambiguitas bawaan: D dengan nada E dari pad = Dsus2; `qualityBias` adalah penilaian, geser sesuai selera);
+slash chord belum dideteksi (butuh estimasi bass). Tes regresi memakai sinyal sintetis berderau tinggi yang membuat pengaturan lama gagal (N 100%).
+
+## Pengembangan
 ```powershell
-cd web
-python -m http.server 8000      # lalu buka http://localhost:8000
+npm test                                                            # tes JS (Node 20+): engine, label, editor, evaluasi, PWA, API (klien Supabase palsu)
+python -m venv .venv; .\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pytest -q                             # tes Python: detector acuan, label, konversi audio, evaluasi (mir_eval)
+cd web; python -m http.server 8000                                  # jalankan lokal di http://localhost:8000 (modul ES tidak jalan dari file://)
 ```
+- **Python** (`app/`, `scripts/`) adalah acuan dan alat offline: detector CQT (`app/detectors/baseline.py`), `scripts/analyze_file.py lagu.mp3` (butuh ffmpeg:
+  Windows `winget install Gyan.FFmpeg`, Mac `brew install ffmpeg`, Linux `sudo apt install ffmpeg`), `scripts/evaluate_dir.py` (`--backup berkas.json` dari
+  tombol ekspor, atau `--dir folder-label`; `--est baseline` untuk versi lain).
+- **Paritas JS = mir_eval:** `scripts/make_eval_fixture.py` membangkitkan 80 kasus acak + jawaban mir_eval ke `js-tests/fixtures/eval-parity.json`; jalankan ulang
+  hanya bila logika evaluasi atau kosakata chord berubah.
+- **Kualitas tes:** tes paritas diuji dengan mutasi (rumus sengaja dirusak → tes gagal). Tes sinyal sintetis bersih tidak cukup untuk detector (lihat penyetelan di atas).
 
-1. **+ Tambah lagu** (atau seret file): file dibaca dan didekode di browser, diunggah ke Supabase Storage,
-   dianalisis di Web Worker, lalu hasilnya disimpan ke database (versi `baseline` dan `auto`).
-   Satu file satu kali (hemat RAM iPad). Batas: 50 MB dan 15 menit. File yang sama (hash isi) ditolak.
-2. **Lihat chord**, **Analisis ulang** (mengunduh audio lalu menganalisis lagi), **Ekspor .lab**
-   (koreksi bila ada, kalau tidak hasil mesin), **Impor .lab** (jadi versi `corrected`), **Hapus**
-   (audio + semua label), dan **Ekspor semua label (JSON)** sebagai cadangan.
-3. Analisis yang terputus (tab ditutup) tampil sebagai "Terputus" dan bisa diulang. Daftar lagu
-   disegarkan otomatis saat tab kembali aktif, jadi perubahan dari perangkat lain muncul.
-
-Tes: `npm test` (tanpa jaringan; klien Supabase dipalsukan).
-
-## Pemutar (Fase C): `web/player.html`
-
-Dibuka dari tombol **▶ Buka pemutar** di kartu lagu (`player.html?id=<id lagu>`).
-
-- **Chord aktif** tampil besar di tengah, **chord berikutnya** lebih kecil di sampingnya. Segmen `N` (tanpa chord) tampil `–`.
-- **Lini waktu** horizontal berisi kotak chord (lebar ~ durasi, minimal 60 px). Kotak aktif menyala dan ikut bergulir;
-  menggeser lini waktu sendiri menjeda auto-scroll 2,5 detik. Ketuk kotak untuk melompat ke chord itu.
-- **Kontrol:** putar/jeda, ±5 detik, penggeser posisi, kecepatan 0.5× / 0.75× / 1× / 1.25× (`preservesPitch`, jadi nada tetap),
-  **loop A–B** (Set A, Set B, Hapus loop), layar tetap menyala saat main (Wake Lock, bila didukung).
-  Laptop: spasi = putar/jeda, panah kiri/kanan = ±5 detik.
-- **Transpose** −6..+6 dan **capo** 0..11 hanya mengubah nama chord yang ditampilkan, bukan audio. Chord yang tampil = bentuk
-  yang dimainkan (nada dasar dikurangi capo). **Ejaan** ♯/♭ konsisten: "Otomatis" memilih flat untuk key berflat (F, Bb, Eb, ...) dan sharp untuk lainnya.
-- **Key** ditebak dari chord (profil Krumhansl-Kessler, dibobot durasi). Hanya tebakan.
-- Transpose, capo, dan ejaan diingat per lagu di browser (localStorage).
-- Audio dialirkan dari Supabase Storage lewat URL bertanda tangan (6 jam) yang mendukung HTTP Range, jadi seek bekerja; kalau URL
-  gagal/kedaluwarsa, pemutar meminta yang baru dan lanjut dari posisi yang sama.
-- Menampilkan versi `corrected` bila ada, kalau tidak hasil mesin (belum dikoreksi).
-
-## Editor koreksi (Fase D): di halaman pemutar
-
-Tombol **✎ Mode edit**. Hasil mesin hanya tebakan awal; koreksi disimpan sebagai versi `corrected` dan **tidak pernah menimpa**
-hasil mesin (`auto`).
-
-- **Memilih segmen:** ketuk kotak chord di lini waktu (playhead pindah ke awalnya). Kotak yang berbeda dari hasil mesin diberi garis kuning.
-- **Mengganti chord:** pilih *nada dasar* (12 tombol, ejaan ♯/♭ mengikuti key), *jenis* (maj, m, sus2, sus4, 7, maj7, m7, add9, ...),
-  *bass* untuk slash chord (mis. `D/F#`), `N` untuk tanpa chord, atau **ketik manual** (divalidasi). Berlaku langsung dan bisa diurungkan.
-- **Ganti semua:** setelah mengubah satu segmen (mis. `Dsus2` → `D`), muncul tombol "Ganti semua `Dsus2` lain → `D` (n)" dengan konfirmasi.
-- **Operasi:** pecah di playhead, gabung dengan sebelumnya/berikutnya, hapus (waktunya diserap tetangga), geser batas awal/akhir
-  (±0,1 dan ±0,5 detik atau "= playhead"), geser playhead ±0,1/±1 detik, dan **Loop segmen ini** untuk mendengarkan satu chord berulang-ulang.
-  Durasi segmen minimal 0,1 detik; segmen tidak bisa saling tumpang tindih.
-- **Simpan otomatis** 0,8 detik setelah perubahan terakhir, dengan indikator ("Menyimpan…", "Tersimpan ✓", atau "Gagal… ketuk untuk coba lagi").
-  Menutup tab saat belum tersimpan memunculkan peringatan; berpindah tab/keluar mode edit menyimpan lebih dulu.
-- **Urungkan / Ulangi** sampai 100 langkah (Ctrl+Z / Ctrl+Shift+Z di laptop). **Kembalikan ke hasil mesin** (dengan konfirmasi) pun bisa diurungkan.
-- **⇄ Bandingkan dengan mesin:** dua baris sejajar (Mesin dan Koreksi, lebar sebanding durasi); segmen yang berbeda diberi warna.
-  Ketuk baris untuk melompat; di mode edit, ketuk kotak "Koreksi" untuk memilihnya.
-- Mode edit menampilkan chord **asli** (tanpa transpose/capo) supaya yang diedit sama dengan yang tersimpan; kontrol transpose/capo dinonaktifkan
-  selama mengedit. Saat keluar, key ditebak ulang dari hasil koreksi.
-
-Batasan: tidak ada penguncian antar perangkat; bila dua perangkat mengedit lagu yang sama, yang terakhir menyimpan menang.
-Editor panjang di layar HP (kamu perlu menggulir dari lini waktu ke panel); tata letak ini belum diuji di Safari iPad.
-
-## Evaluasi (Fase E): seberapa benar hasil mesin?
-
-Acuannya adalah **koreksimu** (`corrected`); yang dinilai adalah hasil mesin (`auto` = analisis terakhir, atau `baseline`/detector lain).
-
-**Halaman statistik** (`web/stats.html`, tombol "📊 Statistik akurasi" di daftar lagu), dihitung di browser dari label di Supabase:
-- *Perbandingan versi mesin*: satu baris per versi, untuk melihat apakah detector membaik atau memburuk setelah penyetelan.
-- *Per lagu* dan total (rata-rata berbobot durasi), *akurasi per jenis chord* (mayor, minor, sus, add9, 7th, slash, N, lainnya), dan *salah baca terbanyak* (mis. `Dsus2 → D` berapa detik).
-- Empat skor standar mir_eval: **root**, **majmin**, **thirds**, **sevenths**. "–" = tidak ada bagian yang bisa dibandingkan.
-
-**Skrip Python** (memakai mir_eval sungguhan, untuk label yang kamu ekspor):
-```powershell
-.\.venv\Scripts\python.exe scripts\evaluate_dir.py --backup chordfinder-backup-2026-11-24.json   # dari tombol "Ekspor semua label (JSON)"
-.\.venv\Scripts\python.exe scripts\evaluate_dir.py --dir data\labels --est baseline              # folder <id>.corrected.lab + <id>.baseline.lab
-```
-
-Aturan evaluasi (sama di `app/evaluate.py` dan `web/js/evaluate.js`): rentang evaluasi = rentang koreksi; mesin dipotong atau diisi `N`
-mengikuti rentang itu; celah di kedua sisi dianggap `N`. Selisih batas segmen < 0,1 detik tidak dihitung sebagai "salah baca".
-
-**Yang perlu dipahami:**
-- **mir_eval mengabaikan nada ke-9**: `add9` dianggap mayor, `9` = `7`, `maj9` = `maj7`, `m9` = `m7`. Jadi salah baca `Cadd9` → `C` tidak mengurangi
-  skor mir_eval; untuk itu ada tabel per jenis ("persis sama") dan daftar salah baca. `majmin` dan `sevenths` juga **mengecualikan** chord acuan di luar
-  kosakatanya (mis. sus), sedangkan `thirds` hanya melihat root dan ada tidaknya terts minor (sus dan mayor dianggap sama).
-- **Hanya sebagus koreksimu.** Bagian lagu yang belum kamu periksa masih berisi hasil mesin, sehingga dihitung "benar". Angka yang adil hanya
-  untuk lagu yang sudah kamu periksa sampai habis. Lagu yang baru sebagian dikoreksi membuat akurasi tampak terlalu tinggi.
-- **Paritas JS = mir_eval dibuktikan**: `scripts/make_eval_fixture.py` membangkitkan 80 kasus acak (semua jenis chord, slash, N, celah, rentang
-  berbeda) beserta jawaban dari mir_eval ke `js-tests/fixtures/eval-parity.json`; tes JS membandingkan semuanya. Jalankan ulang skripnya hanya bila
-  logika evaluasi atau kosakata chord berubah.
-
-## Engine JavaScript (`web/js/`)
-
-Port baseline Python ke JavaScript murni, tanpa dependensi dan tanpa build step; modul yang sama
-dipakai browser dan Node. Tes: `npm test` (memakai `node --test`, Node 20+).
-
-| Berkas | Isi |
-|---|---|
-| `config.js` | semua parameter yang bisa dituning (suhu softmax, transisi, segmen minimum, FFT, ...) |
-| `fft.js`, `chroma.js` | FFT radix-2 dan chroma dari STFT (jendela 8192, hop 2048) |
-| `baseline.js` | template, softmax, Viterbi, penggabungan segmen, `detect(samples, sampleRate)` |
-| `labels.js` | baca/tulis `.lab`, validasi chord, konversi Harte dua arah |
-
-Beda dengan Python: chroma dari FFT (bukan CQT) dan tanpa HPSS; sebagai gantinya ada pembersihan chroma
-(lihat "Penyetelan detector"). Parameter JS berbeda dari `app/config.py` (Python) dan tidak perlu disamakan.
-
-## Penyetelan detector (JS)
-
-**Masalah yang ditemukan (2026-11-24):** pada lagu worship asli (Gibeon Worship, 4 menit) versi pertama membaca
-**69,9% waktu sebagai "N"** (tanpa chord), padahal semua tes sinyal sintetis lolos. Penyebabnya: chroma dari FFT linear pada
-rekaman nyata (pad, drum, vokal, reverb) menjadi hampir datar, sehingga template "N" (datar) menang. Detector Python
-(CQT + HPSS) pada lagu yang sama hanya 2,6% N.
-
-**Perbaikan** (`web/js/chroma.js`, `web/js/baseline.js`, `web/js/config.js`):
-1. Median sepanjang waktu per bin (`harmonicMedianFrames: 5`): menjaga nada yang bertahan, membuang transien/perkusi.
-2. Kurangi lantai broadband per frame (`whitenMult: 3`).
-3. Pangkat 1,5 pada magnitudo (`chromaPower`): mempertajam puncak nada terhadap derau.
-4. "N" hanya untuk frame hening (dipaksa); pada frame berbunyi N hanya menang bila chroma benar-benar datar (`noChordBias: -0.4`).
-5. `softmaxTemperature` 0,15 dan `transitionLoop` 0,95: lebih sedikit segmen pendek yang berganti-ganti.
-6. Penalti sus/7th sedikit diperkuat (`qualityBias`: sus -0.06, 7th -0.04).
-
-**Hasil pada lagu itu:** N 69,9% -> **1,2%**; kesepakatan dengan detector Python (root+jenis, per 0,1 dtk) 22% -> **76%**;
-123 segmen (Python 116); chord yang paling sering muncul hampir sama dengan Python; kecocokan dengan lembar chord pengguna
-(key F) kini memuncak tepat pada pergeseran -3 semitone (rekamannya di key D). Waktu analisis 4 menit audio < 1 detik di Node.
-
-**Catatan jujur:**
-- Hanya diuji pada **satu lagu**, dan tidak ada label benar per waktu (hanya lembar chord tanpa waktu). Python dipakai sebagai
-  pembanding, bukan kebenaran. Angka di atas adalah ukuran pendekatan, bukan akurasi sesungguhnya.
-  Akurasi nyata baru terukur setelah ada koreksi manual (Fase D) dan evaluasi (Fase E).
-- **sus2/sus4 masih sering terbaca** (Dsus2, Gsus2, Asus2 ~ 25% durasi), padahal lembar chord hampir tanpa sus. Itu ambiguitas
-  bawaan (D dengan nada E dari pad = Dsus2). Nilai `qualityBias` adalah penilaian, bukan fakta; geser sesuai selera.
-- Tes regresi (`js-tests/baseline.test.js`) memakai sinyal sintetis berderau tinggi yang membuat pengaturan lama gagal (N 100%)
-  tetapi pengaturan sekarang tetap benar. Pada derau rendah, sinyal sintetis tidak pernah memperlihatkan masalah ini.
-
-## Instalasi
-
-1. **Python 3.11+** (diuji di 3.14).
-2. **ffmpeg** (wajib untuk mp3/mp4/m4a):
-   - Windows: `winget install Gyan.FFmpeg` (lalu buka ulang terminal)
-   - Mac: `brew install ffmpeg`
-   - Linux: `sudo apt install ffmpeg`
-   - Cek: `ffmpeg -version`
-3. Dependensi Python:
-   ```powershell
-   python -m venv .venv
-   .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-   ```
-   (Mac/Linux: `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`)
-
-## Mencoba Fase 1 (CLI)
-
-```powershell
-.\.venv\Scripts\python.exe scripts\analyze_file.py lagu.mp3
-```
-
-Mencetak segmen (`mulai akhir chord`) dan menulis `data/labels/lagu.baseline.lab`.
-Tanpa ffmpeg, wav pun tetap lewat ffmpeg sehingga akan muncul pesan cara memasangnya.
-
-Tes: `.\.venv\Scripts\python.exe -m pytest -q`
-
-## Menjalankan server (Fase 2)
-
-```powershell
-.\run.ps1          # Mac/Linux: ./run.sh
-```
-
-Server jalan di `0.0.0.0:8000`. Buka **http://localhost:8000/docs** untuk mencoba semua endpoint
-dari browser (halaman web aslinya baru ada di Fase 3). Dari iPad: cari IP laptop (`ipconfig`),
-buka `http://IP:8000/docs`; kalau tidak bisa, izinkan Python di Windows Firewall untuk jaringan privat.
-
-Contoh lewat terminal:
-```powershell
-curl.exe -F "file=@lagu.mp3" http://localhost:8000/api/songs          # -> {"id": 1, ...}
-curl.exe -X POST "http://localhost:8000/api/songs/1/analyze"          # jalan di background
-curl.exe http://localhost:8000/api/songs/1                            # poll: status uploaded/analyzing/ready/error
-curl.exe http://localhost:8000/api/songs/1/chords
-```
-
-| Endpoint | Fungsi |
-|---|---|
-| `POST /api/songs` | upload file (multipart, field `file`) |
-| `GET /api/songs`, `GET /api/songs/{id}` | daftar lagu / satu lagu (untuk polling status) |
-| `POST /api/songs/{id}/analyze?detector=baseline` | analisis di background; 409 bila sedang berjalan |
-| `GET /api/songs/{id}/chords?version=auto\|corrected` | segmen JSON. `corrected` yang belum ada = salinan `auto` (field `version` menyebut mana yang dikirim). Nama detector juga boleh jadi `version`. |
-| `PUT /api/songs/{id}/chords` | simpan koreksi: `{"segments":[{"start","end","label"}]}`. Ditolak (422) bila tumpang tindih, tidak berurutan, durasi nol, atau chord tak valid. Gap antar segmen diperbolehkan. |
-| `GET /api/songs/{id}/audio` | stream audio dengan HTTP Range (seek di Safari) |
-| `GET /api/songs/{id}/export?format=lab\|txt&version=corrected` | unduh label; `txt` = 4 chord per baris tanpa `N` |
-| `DELETE /api/songs/{id}` | hapus audio + semua label lagu itu (cache wav dibiarkan; dipakai bersama) |
-
-### Input dari link (Fase 2b)
-
-```powershell
-curl.exe -X POST http://localhost:8000/api/songs/from-url -H "Content-Type: application/json" -d "{\"url\":\"https://youtu.be/XXXX\"}"
-```
-
-- Hanya `http`/`https`. Satu link = satu video; playlist, livestream, dan video lebih dari
-  15 menit (`MAX_DOWNLOAD_SEC` di `app/config.py`) ditolak langsung (400) dengan pesan jelas.
-- Status yang bisa dipoll lewat `GET /api/songs/{id}`: `downloading` -> `converting` -> `uploaded`
-  (atau `error` dengan pesan manusiawi). Setelah itu lagu diperlakukan persis seperti upload:
-  tinggal `POST .../analyze`. Status `ready` tetap berarti *analisis selesai*.
-- Audio disimpan di `data/audio/<id>.m4a` (format m4a/AAC diutamakan karena bisa diputar Safari iPad).
-- Link yang sama tidak diunduh dua kali: kalau video itu sudah ada sebagai lagu, respons `200` berisi
-  lagu yang sudah ada dengan `"duplicate": true`. Kalau percobaan sebelumnya gagal, record yang sama dipakai ulang.
-- Hanya untuk pemakaian pribadi. Hormati hak cipta dan ketentuan layanan situs asal.
-- **yt-dlp perlu diperbarui berkala** karena situs sering berubah. Kalau muncul pesan
-  "yt-dlp sudah kadaluarsa", jalankan `.\.venv\Scripts\python.exe -m pip install -U yt-dlp` lalu mulai ulang server.
-- Unduhan butuh internet; analisis dan semua fitur lain tetap 100% lokal.
-
-File label per lagu di `data/labels/`: `<id>.auto.lab` (analisis terakhir, tidak pernah disentuh
-koreksi), `<id>.<detector>.lab` (tiap detector), `<id>.corrected.lab` (koreksimu). Analisis ulang
-menimpa `auto` tapi tidak pernah `corrected`.
-
-Keputusan sederhana: id lagu berupa angka yang tidak dipakai ulang; kalau server mati di tengah
-analisis, lagu itu ditandai `error` saat server hidup lagi (bisa dianalisis ulang).
-
-## Cara kerja detector baseline
-
-audio -> komponen harmonik -> chroma CQT (hop 2048) -> kemiripan ke template chord
-(mayor, minor, sus2, sus4, 7, maj7, m7, N) -> softmax -> Viterbi -> segmen -> segmen
-< 0.3 detik diserap tetangga. Semua angka (suhu, probabilitas bertahan, panjang minimum,
-bias per kualitas chord) ada di `app/config.py`.
-
-Keterbatasan yang sudah diketahui:
-- **sus2 vs sus4**: Dsus4 dan Gsus2 berisi nada yang sama, jadi root-nya tidak bisa dibedakan
-  dari chroma. Perlu info bass atau model terlatih.
-- Slash chord (G/B) belum dideteksi; bisa diisi lewat koreksi manual.
-- Pad tebal dan reverb mengaburkan chroma. Anggap hasilnya tebakan awal.
-
-## Format label
-
-`.lab`, tiga kolom dipisah tab: `start_sec  end_sec  chord`. Notasi: `C Dm Dsus2 C7 Cmaj7 Am7 Cadd9 G/B N`.
-Konversi ke notasi Harte (untuk mir_eval) ada di `app/labels.py`.
-
-## Catatan keputusan desain
-
-- Ejaan chord hasil mesin selalu sharp (C#, bukan Db). Pilihan sharp/flat untuk tampilan masuk di Fase 3.
-- `add9` tidak ada di kosakata baseline (sesuai spesifikasi), tapi dikenali sebagai input/koreksi.
-- Cache konversi memakai hash isi file, jadi file yang sama tidak dikonversi dua kali.
+## Belum terbukti
+- **Safari iPad asli** (seek dan putar dari URL Supabase, sentuhan di editor, Wake Lock, pemasangan ke layar utama) dan **service worker di browser sungguhan**
+  (browser uji tidak mendukung service worker; perilakunya diuji di Node dengan `self`/`caches`/`fetch` tiruan).
+- **Akurasi pada banyak lagu.** Belum ada lagu yang dikoreksi penuh, jadi akurasi nyata belum terukur.
+- Editor di layar HP panjang (perlu menggulir antara lini waktu dan panel).

@@ -1,37 +1,42 @@
 # Chord Finder pribadi (lagu rohani)
 
-Aplikasi lokal untuk satu pengguna: deteksi chord dari audio/video/link, tampil sinkron dengan lagu,
-koreksi manual disimpan sebagai dataset label. Spesifikasi lengkap ada di `chord-finder-prompt.md`.
+Web statis untuk satu pengguna: deteksi chord dari file audio/video di browser, putar dengan chord sinkron, koreksi manual, ukur akurasi.
+Spesifikasi awal ada di `chord-finder-prompt.md` (sebagian sudah usang: arsitektur berubah, lihat di bawah). Dokumentasi pemakaian dan deploy ada di `README.md`.
 
 ## Arsitektur (diputuskan 2026-11-24)
-Web statis yang jalan di browser, deploy ke Netlify dari GitHub (folder `web/`, tanpa build step, tanpa framework).
-Analisis chord dilakukan di browser (`web/js/`); Python (`app/`, `tests/`, `scripts/`) tetap sebagai acuan,
-tes kesamaan, dan evaluasi offline. Backend FastAPI (`app/main.py`, `storage.py`, `download.py`) tidak lagi
-dipakai dan dihapus di fase akhir. Fitur tempel link YouTube dilepas.
-Data lintas perangkat: Supabase project `chord-finder` (Postgres songs + label_versions, bucket privat `audio`).
-Saat ini MODE TERBUKA tanpa login (`REQUIRE_LOGIN = false`, RLS `using (true)` untuk anon; atas permintaan pengguna);
-`supabase/lock-down.sql` + `REQUIRE_LOGIN = true` mengunci ke satu akun. Skema di `supabase/schema.sql`. Klien: `web/js/api.js`
-(klien disuntikkan agar bisa diuji tanpa jaringan). Pengguna memberi izin penuh untuk urusan project ini;
-jangan sentuh project Supabase lain milik mereka. Password akun dibuat pengguna sendiri.
-Tes JS: `npm test`. Render UI diuji di browser dengan klien Supabase palsu (import map), tanpa login sungguhan.
+- **Web statis di browser**, deploy ke Netlify dari GitHub (`Stiptech/Chord-Detection`, folder `web/`, tanpa build, tanpa framework, `netlify.toml`).
+  Tanpa server Python. Fitur tempel link YouTube dan backend FastAPI sudah dihapus (riwayat git, commit `3448cc8` dan sebelumnya).
+- **Data lintas perangkat: Supabase** project `chord-finder` (Postgres `songs` + `label_versions`, bucket privat `audio`). Klien: `web/js/api.js`
+  (klien disuntikkan agar bisa diuji tanpa jaringan). Skema di `supabase/schema.sql`.
+- **MODE TERBUKA tanpa login** (`REQUIRE_LOGIN = false`, RLS `using (true)` untuk anon), atas permintaan pengguna. `supabase/lock-down.sql` +
+  `REQUIRE_LOGIN = true` mengunci ke satu akun. Pengguna memberi izin penuh untuk urusan project ini; jangan sentuh project Supabase lain
+  milik mereka. Password akun dibuat pengguna sendiri.
+- **Python** (`app/`, `scripts/`, `tests/`) = acuan (detector CQT), tes paritas, dan evaluasi offline (mir_eval). Detector yang dipakai aplikasi ada di `web/js/`.
+- Jangan push ke GitHub atau mengubah arsitektur tanpa persetujuan (push ke `main` memicu deploy Netlify).
 
-Fase: A engine JS (selesai) -> B penyimpanan + daftar lagu (selesai) -> C pemutar (selesai) -> D editor koreksi (selesai) -> E evaluasi (selesai) -> F deploy/PWA.
+## Peta berkas `web/js/`
+`app.js` daftar lagu · `player.js` pemutar · `editor.js` + `edit-logic.js` koreksi · `stats.js` + `evaluate.js` statistik · `baseline.js`, `chroma.js`, `fft.js`,
+`config.js` detector · `labels.js` .lab/Harte/validasi · `transpose.js` transpose + key · `audio.js`, `analysis.js`, `worker.js` dekode + Web Worker ·
+`api.js`, `supabase.js`, `supabase-config.js` data · `dom.js` pembuat elemen · `pwa.js` + `sw.js` service worker.
+Logika murni dipisah dari DOM (`edit-logic.js`, `player-logic.js`, `evaluate.js`, `transpose.js`) supaya bisa dites di Node.
 
-## Prinsip
-- Sederhana dan mudah diubah. Tanpa auth, tanpa cloud, tanpa ORM, frontend vanilla tanpa build step.
-- Hasil mesin hanyalah tebakan awal; koreksi manual adalah alur utama.
-- Semua analisis lokal. Satu-satunya akses jaringan keluar: unduhan dari link yang ditempel pengguna.
-- Semua parameter yang bisa dituning ada di `app/config.py`.
-- Tanya pengguna sebelum menambah dependensi besar (torch, tensorflow, dll).
-- Kerja per fase; setelah tiap fase: jalankan tes, commit, lalu berhenti dan jelaskan cara mencobanya.
-  Fase 6 (detector pretrained) hanya dikerjakan kalau diminta.
+## Prinsip kerja
+- Sederhana dan mudah diubah. Frontend vanilla tanpa build. Hasil mesin hanyalah tebakan awal; koreksi manual adalah alur utama.
+- Tanya pengguna sebelum menambah dependensi besar. Parameter yang bisa dituning ada di `web/js/config.js` (detector JS).
+- Kerja per fase; setelah tiap fase: jalankan tes, commit, lalu berhenti dan jelaskan cara mencobanya. Fase 6 (detector pretrained) hanya bila diminta.
+- Tes sinyal sintetis bersih TIDAK cukup untuk detector (sudah pernah menyembunyikan N 70% pada lagu nyata). Uji dengan audio nyata atau sinyal berderau tinggi.
+- Jujur soal yang belum terbukti: Safari iPad dan service worker di browser sungguhan belum teruji.
 
 ## Perintah
-- Tes: `.\.venv\Scripts\python.exe -m pytest -q`
-- Analisis CLI: `.\.venv\Scripts\python.exe scripts\analyze_file.py lagu.mp3`
+- Tes JS: `npm test` · Tes Python: `.\.venv\Scripts\python.exe -m pytest -q`
+- Lokal: `cd web; python -m http.server 8000` · CLI: `.\.venv\Scripts\python.exe scripts\analyze_file.py lagu.mp3` (butuh ffmpeg)
+- Evaluasi offline: `scripts\evaluate_dir.py --backup berkas.json` · ikon: `scripts\make_icons.py` · fixture paritas: `scripts\make_eval_fixture.py`
+
+## Catatan pengujian di browser (alat Claude)
+- Panel browser yang tersembunyi menghentikan `requestAnimationFrame`, sehingga UI tampak kosong; tampilkan panel (`show_pane`) atau pasang penyiasat rAF
+  khusus uji. Browser uji tidak mendukung service worker.
+- Data uji ke Supabase asli: beri nama berawalan `ZZ-UJI` dan hapus **berdasarkan nama persis**, jangan pernah menghapus semua kartu (ada lagu asli pengguna).
 
 ## Format data
-- `.lab`: `start<TAB>end<TAB>chord`. `<id>.auto.lab` tidak pernah ditimpa koreksi; koreksi masuk `<id>.corrected.lab`;
-  tiap detector menulis `<id>.<detector>.lab`.
-- Notasi aplikasi: `C Dm Dsus2 Dsus4 C7 Cmaj7 Am7 Cadd9 G/B N`. Konversi Harte ada di `app/labels.py`.
-- Penghubung antar modul: `Segment(start, end, label)` di `app/detectors/base.py`.
+- `.lab`: `start<TAB>end<TAB>chord`. Versi label per lagu: `auto` (tidak pernah ditimpa koreksi), nama detector, `corrected`.
+- Notasi: `C Dm Dsus2 Dsus4 C7 Cmaj7 Am7 Cadd9 G/B N`. Konversi Harte: `web/js/labels.js` dan `app/labels.py`.
