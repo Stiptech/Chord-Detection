@@ -25,7 +25,7 @@ Logika murni dipisah dari DOM (`edit-logic.js`, `player-logic.js`, `evaluate.js`
 - Tanya pengguna sebelum menambah dependensi besar. Parameter yang bisa dituning ada di `web/js/config.js` (detector JS).
 - Kerja per fase; setelah tiap fase: jalankan tes, commit, lalu berhenti dan jelaskan cara mencobanya. Fase 6 (detector pretrained) hanya bila diminta.
 - Tes sinyal sintetis bersih TIDAK cukup untuk detector (sudah pernah menyembunyikan N 70% pada lagu nyata). Uji dengan audio nyata atau sinyal berderau tinggi.
-- Jujur soal yang belum terbukti: Safari iPad dan service worker di browser sungguhan belum teruji.
+- Jujur soal yang belum terbukti: Safari iPad belum teruji. Situs live (https://chorddetection.netlify.app) sudah publik (Team login dimatikan) dan diuji end-to-end; service worker terbukti aktif di HTTPS live.
 
 ## Perintah
 - Tes JS: `npm test` · Tes Python: `.\.venv\Scripts\python.exe -m pytest -q`
@@ -34,7 +34,7 @@ Logika murni dipisah dari DOM (`edit-logic.js`, `player-logic.js`, `evaluate.js`
 
 ## Catatan pengujian di browser (alat Claude)
 - Panel browser yang tersembunyi menghentikan `requestAnimationFrame`, sehingga UI tampak kosong; tampilkan panel (`show_pane`) atau pasang penyiasat rAF
-  khusus uji. Browser uji tidak mendukung service worker.
+  khusus uji. Service worker gagal terdaftar di http://127.0.0.1 pada browser uji, tapi berhasil di HTTPS live.
 - Data uji ke Supabase asli: beri nama berawalan `ZZ-UJI` dan hapus **berdasarkan nama persis**, jangan pernah menghapus semua kartu (ada lagu asli pengguna).
 
 ## Format data

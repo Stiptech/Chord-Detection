@@ -67,7 +67,8 @@ Free tier: project dijeda otomatis bila tidak aktif 7 hari (data aman, tinggal *
 ### Netlify
 Repo GitHub → Netlify → *Import an existing project*. Pengaturan (sudah dibaca dari `netlify.toml`): **Base directory** kosong, **Build command** kosong,
 **Publish directory** `web`, **Functions directory** kosong. Netlify otomatis men-deploy setiap push ke `main`.
-Jika situs mengembalikan HTTP 401, matikan **Team login** di Project configuration → Access & security → Visitor access.
+Jika situs mengembalikan HTTP 401, matikan **Team login** di Project configuration → Access & security → Visitor access (sudah dimatikan untuk situs ini, dan situs live sudah diuji publik).
+Netlify menyuntikkan skripnya sendiri (`/.netlify/scripts/hud`, toolbar anggota tim) ke setiap halaman; bagian inline-nya diblokir CSP dan muncul sebagai satu error di konsol. Itu wajar dan tidak mengganggu aplikasi.
 `netlify.toml` juga memasang header keamanan, termasuk **Content-Security-Policy** yang hanya mengizinkan skrip dari situs sendiri dan jsdelivr
 (supabase-js, versi terkunci) serta koneksi data/audio ke project Supabase di atas. **Bila project Supabase diganti, ubah alamatnya di `connect-src` dan `media-src`.**
 
@@ -78,7 +79,7 @@ audio sampai kuota habis (bucket dibatasi 50 MB/file dan hanya audio/video). Rep
 ubah `REQUIRE_LOGIN` ke `true`, lalu deploy ulang. Data yang ada tetap utuh; form login sudah tersedia.
 
 ### PWA
-`manifest.webmanifest`, ikon (`web/icons/`, dibangkitkan `scripts/make_icons.py` tanpa dependensi), dan `sw.js`. Service worker memakai strategi **jaringan dulu**
+Terbukti terdaftar dan aktif di situs live (HTTPS), dengan 36 berkas di cache. `manifest.webmanifest`, ikon (`web/icons/`, dibangkitkan `scripts/make_icons.py` tanpa dependensi), dan `sw.js`. Service worker memakai strategi **jaringan dulu**
 (selalu versi terbaru; cache hanya cadangan) dan tidak menyentuh Supabase/CDN. Offline hanya cangkang aplikasinya yang terbuka; daftar lagu, audio, dan label
 tetap butuh internet.
 
@@ -111,7 +112,7 @@ cd web; python -m http.server 8000                                  # jalankan l
 - **Kualitas tes:** tes paritas diuji dengan mutasi (rumus sengaja dirusak → tes gagal). Tes sinyal sintetis bersih tidak cukup untuk detector (lihat penyetelan di atas).
 
 ## Belum terbukti
-- **Safari iPad asli** (seek dan putar dari URL Supabase, sentuhan di editor, Wake Lock, pemasangan ke layar utama) dan **service worker di browser sungguhan**
-  (browser uji tidak mendukung service worker; perilakunya diuji di Node dengan `self`/`caches`/`fetch` tiruan).
+- **Safari iPad asli** (seek dan putar dari URL Supabase, sentuhan di editor, Wake Lock, pemasangan ke layar utama). Semua pengujian di Chrome (termasuk emulasi HP dan situs live).
+- **Perilaku offline sungguhan** (mematikan jaringan lalu membuka app). Service worker terbukti terdaftar dan aktif di situs live, dan logikanya diuji di Node dengan `caches`/`fetch` tiruan.
 - **Akurasi pada banyak lagu.** Belum ada lagu yang dikoreksi penuh, jadi akurasi nyata belum terukur.
-- Editor di layar HP masih panjang (~1200 px) meski dock menempel; tata letaknya baru dilihat di emulasi Chrome, belum di iPad.
+- Editor di layar HP masih panjang (~1200 px) meski dock menempel; tata letaknya baru dilihat di emulasi Chrome.
