@@ -8,6 +8,18 @@ Aplikasi lokal untuk mendeteksi chord dari file audio/video atau link, lalu meng
 
 Status: Fase 1, 2, 2b (Python) selesai. **Fase A (engine JavaScript) selesai**; UI menyusul.
 
+## Setup Supabase (database + penyimpanan audio lintas perangkat)
+
+Satu kali, di https://supabase.com (gratis):
+
+1. **New project**. Pilih region terdekat (mis. Singapore) dan simpan *database password* di tempat aman (aplikasi tidak memakainya).
+2. **SQL Editor -> New query** -> tempel seluruh isi [`supabase/schema.sql`](supabase/schema.sql) -> **Run**. Ini membuat tabel `songs`, `label_versions`, bucket privat `audio`, dan aturan keamanan (Row Level Security) supaya hanya akunmu yang bisa membaca/menulis.
+3. **Authentication -> Users -> Add user -> Create new user**: isi email dan password-mu sendiri, centang **Auto Confirm User**.
+4. **Authentication -> Sign In / Providers** (atau *Settings*): matikan **Allow new users to sign up**, supaya tidak ada orang lain yang bisa membuat akun.
+5. **Project Settings -> API Keys**: salin **Project URL** dan **publishable key** (kunci lama bernama *anon*). Kedua nilai ini memang publik dan aman ada di kode web, karena data dilindungi RLS + login. **Jangan pernah** memasukkan `service_role`/*secret* key atau database password ke kode atau repo.
+
+Catatan free tier: project dijeda otomatis kalau tidak aktif 7 hari (data tetap aman, tinggal *Restore* di dashboard); storage 1 GB; maksimal 50 MB per file.
+
 ## Engine JavaScript (`web/js/`)
 
 Port baseline Python ke JavaScript murni, tanpa dependensi dan tanpa build step; modul yang sama
