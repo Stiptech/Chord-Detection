@@ -32,7 +32,7 @@ const st = {
   transpose: 0, capo: 0, spelling: 'auto',
   editing: false, compareOn: false, version: 'auto', selected: null,
   raf: 0, lastUserScroll: 0, wakeLock: null, urlRetries: 0,
-  beats: null, bars: [], barMode: false, barBoxes: [], barIdx: -2, countInOn: false, counting: null, beatSaveTimer: 0,
+  btcSegs: null, beats: null, bars: [], barMode: false, barBoxes: [], barIdx: -2, countInOn: false, counting: null, beatSaveTimer: 0,
 };
 const METERS = [[3, '3'], [4, '4'], [6, '6']];
 const metro = createMetronome(audio, () => (st.beats ? { beats: st.beats.beats, meter: st.beats.meter, phase: st.beats.phase } : null));
@@ -397,6 +397,7 @@ const editor = createEditor({
   setLoop: (a, b) => { st.loopA = a; st.loopB = b; updateLoopInfo(); },
   autoSegs: () => st.autoSegs,
   beats: () => st.beats?.beats ?? [],
+  btcSegs: () => st.btcSegs,
   onSaved: () => {
     st.version = 'corrected';
     $('versionInfo').textContent = 'Versi koreksi';
@@ -620,12 +621,14 @@ function fail(message) {
     if (REQUIRE_LOGIN && !(await api.getSession())) { location.replace('index.html'); return; }
     const song = await api.getSong(id);
     if (!song) return fail('Lagu tidak ditemukan (mungkin sudah dihapus).');
-    const [{ version, segments }, auto] = await Promise.all([api.getLabelsWithFallback(id, 'corrected'), api.getLabels(id, 'auto')]);
+    const [{ version, segments }, auto, btc] = await Promise.all([
+      api.getLabelsWithFallback(id, 'corrected'), api.getLabels(id, 'auto'), api.getLabels(id, 'btc').catch(() => null)]);
     if (!segments?.length) return fail('Lagu ini belum dianalisis. Kembali ke daftar lalu jalankan analisis.');
 
     st.song = song;
     st.version = version;
     st.segs = [...segments].sort((a, b) => a.start - b.start);
+    st.btcSegs = btc?.length ? [...btc].sort((a, b) => a.start - b.start) : null;
     st.autoSegs = auto?.length ? [...auto].sort((a, b) => a.start - b.start) : null;
     st.key = estimateKey(st.segs);
     st.beats = song.beats?.beats?.length > 1 ? song.beats : null;

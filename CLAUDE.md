@@ -40,4 +40,5 @@ Logika murni dipisah dari DOM (`edit-logic.js`, `player-logic.js`, `evaluate.js`
 ## Format data
 - `.lab`: `start<TAB>end<TAB>chord`. Versi label per lagu: `auto` (tidak pernah ditimpa koreksi), nama detector, `corrected`.
 - `songs.beats` = `{v, bpm, meter, phase, confidence, beats:[detik]}`; dihitung di worker saat analisis (gagal tidak menggagalkan analisis), bisa dihitung ulang dari pemutar. Tempo ambigu satu oktaf: UI punya ÷2/×2.
+- Detector saraf BTC: prototipe offline `scripts/btc_prototype.py` (venv terpisah; hasil = label `btc`; tombol "Muat hasil BTC" di mode edit). Akurasi vs detector sendiri belum terukur (butuh lagu terkoreksi). Bobot dilaporkan nonkomersial.
 - Notasi: `C Dm Dsus2 Dsus4 C7 Cmaj7 Am7 Cadd9 G/B N`. Konversi Harte: `web/js/labels.js` dan `app/labels.py`.

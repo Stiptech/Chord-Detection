@@ -29,6 +29,7 @@ const $ = (id) => document.getElementById(id);
  * @param {(t:number)=>void} ctx.seekTo
  * @param {(a:number,b:number)=>void} ctx.setLoop
  * @param {()=>any[]|null} ctx.autoSegs
+ * @param {()=>any[]|null} ctx.btcSegs  hasil detector saraf BTC (versi label `btc`), bila ada
  * @param {()=>number[]} ctx.beats  waktu ketukan (detik) untuk "rapatkan ke ketukan"
  * @param {()=>void} ctx.onSaved
  */
@@ -246,6 +247,13 @@ export function createEditor(ctx) {
 
   $('undoBtn').addEventListener('click', undo);
   $('redoBtn').addEventListener('click', redo);
+  $('loadBtcBtn').addEventListener('click', () => {
+    const btc = ctx.btcSegs();
+    if (!btc) return ctx.toast('Tidak ada hasil BTC untuk lagu ini.');
+    if (!confirm('Ganti semua chord yang sedang diedit dengan hasil BTC? Kamu masih bisa membatalkannya dengan Urungkan.')) return;
+    sel = null;
+    apply(btc.map((s) => ({ ...s })), null);
+  });
   $('snapBtn').addEventListener('click', () => {
     const r = snapSegments(ctx.getSegs(), ctx.beats(), 0.15);
     if (!r.changed) return ctx.toast('Tidak ada batas chord yang perlu dirapatkan.');
@@ -275,6 +283,7 @@ export function createEditor(ctx) {
       sel = null;
       history.reset(ctx.getSegs());
       $('editBar').hidden = false;
+      $('loadBtcBtn').hidden = !ctx.btcSegs();
       renderBar(); renderSave(); renderPane();
     },
     async exit() {
