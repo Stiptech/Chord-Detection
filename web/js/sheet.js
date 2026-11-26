@@ -5,6 +5,7 @@ import { createApi, humanizeError } from './api.js';
 import { REQUIRE_LOGIN } from './supabase-config.js';
 import { spellingForKey, transposeChord, estimateKey, keyName } from './transpose.js';
 import { clamp, fmtTime, fmtTimePrecise } from './player-logic.js';
+import { barChords, buildGrid } from './beats.js';
 import { layoutSheet, needsTime, nextUnsynced, parseLyrics, pruneTimes, resolveTimes, sheetToText } from './sheet-logic.js';
 import { h } from './dom.js';
 
@@ -121,7 +122,7 @@ $('saveState').addEventListener('click', () => { if (st.error) flush(); });
 
 function currentBlocks() {
   const items = resolveTimes(st.items, st.sheet.times);
-  return { items, blocks: layoutSheet(items, st.segs, { show, endTime: st.song.duration_sec || undefined }) };
+  return { items, blocks: layoutSheet(items, st.segs, { show, endTime: st.song.duration_sec || undefined, bars: st.bars }) };
 }
 
 function renderSheet() {
@@ -364,6 +365,7 @@ function fail(message) {
 
     st.song = song;
     st.segs = [...segments].sort((a, b) => a.start - b.start);
+    st.bars = song.beats?.beats?.length > 1 ? barChords(buildGrid(song.beats.beats, song.beats.meter, song.beats.phase), st.segs) : [];
     st.key = estimateKey(st.segs);
     const saved = song.sheet && typeof song.sheet === 'object' ? song.sheet : {};
     st.sheet = { v: 1, lyrics: typeof saved.lyrics === 'string' ? saved.lyrics : '', times: saved.times && typeof saved.times === 'object' ? saved.times : {} };

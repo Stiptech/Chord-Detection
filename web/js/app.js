@@ -2,7 +2,7 @@
 import { supabase } from './supabase.js';
 import { createApi, humanizeError } from './api.js';
 import { decodeAudio, sha256Hex } from './audio.js';
-import { analyzeSamples } from './analysis.js';
+import { analyzeBeats, analyzeSamples } from './analysis.js';
 import { formatLab, parseLab, validateSegments } from './labels.js';
 import { REQUIRE_LOGIN } from './supabase-config.js';
 import { h } from './dom.js';
@@ -168,6 +168,11 @@ async function analyzeAndSave(song, audio) {
     busy.text = 'Menyimpan hasil…';
     await api.saveLabels(song.id, 'baseline', segments);
     await api.saveLabels(song.id, 'auto', segments); // 'auto' = analisis terakhir; koreksi tidak menyentuhnya
+    try { // ketukan hanya pelengkap: kegagalannya tidak boleh menggagalkan analisis chord
+      busy.text = 'Menghitung ketukan…';
+      render();
+      await api.saveBeats(song.id, await analyzeBeats(audio.samples, audio.sampleRate, segments));
+    } catch { /* bisa dihitung ulang dari halaman pemutar */ }
     patchSong(await api.updateSong(song.id, { status: 'ready', detector: 'baseline', error: null }));
     state.labels.delete(song.id);
   } catch (e) {

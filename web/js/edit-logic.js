@@ -105,6 +105,34 @@ export function moveEnd(segs, i, t, maxEnd = Infinity) {
 }
 
 /**
+ * Rapatkan batas antar-segmen ke ketukan terdekat (dalam `maxDist` detik). Hanya batas yang bersambung
+ * (akhir segmen = awal berikutnya) yang digeser; awal segmen pertama dan akhir segmen terakhir tetap.
+ * Batas dilewati bila geserannya membuat segmen lebih pendek dari MIN_SEG.
+ * @returns {{segs:{start:number,end:number,label:string}[], changed:number}}
+ */
+export function snapSegments(segs, beats, maxDist = 0.15) {
+  const out = copy(segs);
+  let changed = 0;
+  for (let i = 1; i < out.length; i++) {
+    if (!same(out[i - 1].end, out[i].start)) continue;
+    const t = out[i].start;
+    let best = null;
+    for (const b of beats) {
+      if (b < t - maxDist) continue;
+      if (b > t + maxDist) break; // beats terurut
+      if (best === null || Math.abs(b - t) < Math.abs(best - t)) best = b;
+    }
+    if (best === null || same(best, t)) continue;
+    const b = r3(best);
+    if (b - out[i - 1].start < MIN_SEG - EPS || out[i].end - b < MIN_SEG - EPS) continue;
+    out[i - 1].end = b;
+    out[i].start = b;
+    changed++;
+  }
+  return { segs: out, changed };
+}
+
+/**
  * Tandai segmen yang berbeda antara dua versi: sebuah segmen dianggap berbeda bila di bagian mana pun dari
  * rentang waktunya (lebih dari `tol` detik) versi lain tidak berlabel sama, termasuk bila di sana tidak ada segmen.
  * Mengembalikan {a: boolean[], b: boolean[]} sejajar dengan masing-masing array.

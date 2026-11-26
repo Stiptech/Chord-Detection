@@ -30,6 +30,19 @@ Di Chrome/Android/desktop ada tombol Pasang di bilah alamat.
   Ejaan ♯/♭ konsisten ("Otomatis" memilih flat untuk key berflat seperti F, Bb, Eb). **Key** ditebak dari chord (Krumhansl-Kessler) dan hanya tebakan.
 - Pengaturan transpose/capo/ejaan diingat per lagu di browser. Audio dialirkan dari Supabase lewat URL bertanda tangan yang mendukung HTTP Range (seek jalan).
 
+### Ketukan, birama, metronom (kartu "Ketukan" di pemutar)
+Saat analisis, aplikasi juga mencari **ketukan** (tempo, garis ketukan, birama). Lagu lama: ketuk **Hitung ketukan** di pemutar (mengunduh audio lalu menghitung di browser, ~1 detik per lagu).
+- **▦ Per birama:** lini waktu berubah jadi satu kotak per birama (`C`, `G Am`, `•` bila chord bertahan). Ketuk kotak untuk melompat.
+- **Birama 3/4/6** dan **Downbeat ◀ ▶** (ketukan pertama tiap birama) bisa diubah; **÷2 / ×2** bila tempo terasa dua kali terlalu cepat/lambat. Semua tersimpan per lagu (`songs.beats`).
+- **Metronom** (klik beraksen di downbeat, mengikuti kecepatan putar), **hitung mundur** satu birama sebelum lagu mulai, dan **loop 1 / 4 birama** dari posisi sekarang.
+- Di mode edit: **⌗ Rapatkan ke ketukan** menggeser batas chord (yang berjarak ≤ 0,15 dtk dari ketukan) ke ketukan; satu langkah, bisa diurungkan.
+- **Lembar chord:** bagian tanpa lirik (Intro/Instrumen) kini memakai palang birama sungguhan `| C | G | Am F | • |`, empat birama per baris.
+
+**Cara kerja (klasik, bukan jaringan saraf):** kekuatan onset dari spektrum mel → tempo dari autokorelasi dengan prior (condong ke tempo lambat-sedang, 85 BPM) → pelacak ketukan
+dinamis (Ellis 2007) → downbeat dan birama dipilih dari seberapa teratur pergantian chord terhadap siklus ketukan. Pada lagu asli, 52% pergantian chord jatuh dalam 80 ms
+dari ketukan (pembanding acak 9%). **Batasan jujur:** tempo selalu ambigu satu oktaf (68 atau 136 BPM sama-sama "benar"), jadi ada ÷2/×2; birama tebakan lemah bila chord jarang berganti;
+perkusi lemah/rubato membuat ketukan menyimpang. Hanya divalidasi pada satu lagu asli dan sinyal sintetis.
+
 ### Mode edit (koreksi)
 
 Koreksi disimpan sebagai versi `corrected` dan **tidak pernah menimpa** hasil mesin (`auto`).
@@ -63,8 +76,8 @@ chord pertama di awal baris; chord yang saling berdekatan didorong ke kanan supa
 **Cetak / simpan PDF** (tampilan cetak putih-hitam tanpa kontrol).
 
 **Batasan yang jujur:** penempatan chord memakai pembagian waktu *proporsional* di dalam baris, jadi bisa meleset satu-dua kata bila kata-katanya tidak merata waktunya;
-belum ada geser manual per chord (solusinya: salin teks lalu rapikan, atau pecah baris panjang jadi dua). Bar tanpa lirik tidak punya palang birama atau `•` karena aplikasi
-belum mendeteksi ketukan. Lembar hanya sebagus label chordnya: koreksi chord dulu di mode edit.
+belum ada geser manual per chord (solusinya: salin teks lalu rapikan, atau pecah baris panjang jadi dua). Palang birama hanya muncul bila lagu punya data ketukan
+(lihat kartu Ketukan di pemutar); tanpa itu bagian tanpa lirik tampil empat chord per baris. Lembar hanya sebagus label chordnya: koreksi chord dulu di mode edit.
 
 ### Statistik
 
@@ -110,6 +123,7 @@ tetap butuh internet.
 ## Format data
 - Label `.lab`: `start<TAB>end<TAB>chord` per baris. Notasi chord: `C Dm Dsus2 Dsus4 C7 Cmaj7 Am7 Cadd9 G/B N`. Konversi Harte dua arah ada di `web/js/labels.js` dan `app/labels.py`.
 - Lembar chord disimpan di kolom `songs.sheet` (JSON: `{v, lyrics, times}`; `times` = detik awal tiap baris/bagian, dikunci oleh jenis|teks|urutan kemunculan).
+- Ketukan disimpan di kolom `songs.beats` (JSON: `{v, bpm, meter, phase, confidence, beats:[detik]}`; `phase` = indeks ketukan yang jadi downbeat dalam siklus).
 - Di database tiap lagu punya beberapa versi label: `auto` (analisis terakhir; tidak pernah ditimpa koreksi), nama detector (`baseline`), dan `corrected` (koreksimu).
 
 ## Detector (JavaScript, `web/js/`)
@@ -137,6 +151,7 @@ cd web; python -m http.server 8000                                  # jalankan l
 - **Kualitas tes:** tes paritas diuji dengan mutasi (rumus sengaja dirusak → tes gagal). Tes sinyal sintetis bersih tidak cukup untuk detector (lihat penyetelan di atas).
 
 ## Belum terbukti
+- **Pelacak ketukan** baru diuji pada satu lagu asli (+ sinyal sintetis); tebakan birama dan oktaf tempo belum teruji pada banyak lagu.
 - **Safari iPad asli** (seek dan putar dari URL Supabase, sentuhan di editor, Wake Lock, pemasangan ke layar utama). Semua pengujian di Chrome (termasuk emulasi HP dan situs live).
 - **Perilaku offline sungguhan** (mematikan jaringan lalu membuka app). Service worker terbukti terdaftar dan aktif di situs live, dan logikanya diuji di Node dengan `caches`/`fetch` tiruan.
 - **Akurasi pada banyak lagu.** Belum ada lagu yang dikoreksi penuh, jadi akurasi nyata belum terukur.

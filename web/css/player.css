@@ -138,3 +138,13 @@
 .nudge { display: grid; grid-template-columns: repeat(auto-fit, minmax(54px, 1fr)); gap: 6px; }
 .nudge .nudge-label { grid-column: 1 / -1; min-width: 0; }
 .nudge .btn { min-width: 0; padding: 6px 2px; font-size: .88rem; }
+
+/* ---------- Ketukan, birama, metronom ---------- */
+#rhythmCard { margin-bottom: 14px; }
+#rhythmCard:not(.has-beats) .beat-only { display: none; }
+.btn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+.tl-box.bar { min-width: 76px; }
+.tl-box.bar strong { font-size: 1.05rem; white-space: nowrap; }
+.tl-box.bar.hold strong { color: var(--muted); font-weight: 400; }
+.tl-box.bar.on.hold strong { color: inherit; }
+.tl-box.bar.downbeat0 { border-left: 4px solid var(--warn); }

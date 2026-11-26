@@ -35,6 +35,7 @@
       <div class="modebar">
         <button id="editToggle" class="btn small" type="button" aria-pressed="false">✎ Mode edit</button>
         <button id="compareToggle" class="btn small" type="button" aria-pressed="false">⇄ Bandingkan dengan mesin</button>
+        <button id="barToggle" class="btn small" type="button" aria-pressed="false" hidden>▦ Per birama</button>
         <a id="sheetLink" class="btn small" href="#">📄 Lembar chord</a>
       </div>
 
@@ -54,6 +55,7 @@
         <div class="row">
           <button id="undoBtn" class="btn small" type="button">↶ Urungkan</button>
           <button id="redoBtn" class="btn small" type="button">↷ Ulangi</button>
+          <button id="snapBtn" class="btn small" type="button" hidden>⌗ Rapatkan ke ketukan</button>
           <button id="resetAutoBtn" class="btn small danger" type="button">Kembalikan ke hasil mesin</button>
         </div>
         <p class="muted small-note">Chord asli (tanpa transpose/capo). Ketuk kotak chord untuk mengedit; perubahan tersimpan otomatis ke versi koreksi, hasil mesin tidak pernah ditimpa.</p>
@@ -75,6 +77,45 @@
           <button id="fwd5" class="btn tbtn" type="button">+5 dtk</button>
         </div>
       </div>
+
+      <section id="rhythmCard" class="card opts">
+        <div class="opt">
+          <span class="opt-label">Ketukan</span>
+          <p id="beatInfo" class="muted loopinfo">Belum dihitung</p>
+          <div class="row">
+            <button id="beatCalc" class="btn small" type="button">Hitung ketukan</button>
+            <button id="tempoHalf" class="btn small beat-only" type="button" aria-label="Tempo separuh: hapus tiap ketukan kedua">÷2</button>
+            <button id="tempoDouble" class="btn small beat-only" type="button" aria-label="Tempo dua kali: sisipkan ketukan di tengah">×2</button>
+          </div>
+          <p class="muted small-note beat-only">Bila tempo terasa dua kali lebih cepat atau lambat dari yang kamu ketuk, pakai ÷2 / ×2.</p>
+        </div>
+
+        <div class="opt beat-only">
+          <span class="opt-label">Birama</span>
+          <div id="meterSeg" class="seg" role="group" aria-label="Ketukan per birama"></div>
+          <div class="row">
+            <button id="phaseDown" class="btn small" type="button">◀ Downbeat</button>
+            <button id="phaseUp" class="btn small" type="button">Downbeat ▶</button>
+          </div>
+          <p class="muted small-note">Downbeat = ketukan pertama tiap birama. Geser bila nomor birama terasa salah.</p>
+        </div>
+
+        <div class="opt beat-only">
+          <span class="opt-label">Metronom</span>
+          <div class="row">
+            <button id="metroBtn" class="btn small" type="button" aria-pressed="false">🔔 Metronom</button>
+            <button id="countInBtn" class="btn small" type="button" aria-pressed="false">Hitung mundur 1 birama</button>
+          </div>
+        </div>
+
+        <div class="opt beat-only">
+          <span class="opt-label">Loop per birama</span>
+          <div class="row">
+            <button id="loopBar1" class="btn small" type="button">Birama ini</button>
+            <button id="loopBar4" class="btn small" type="button">4 birama dari sini</button>
+          </div>
+        </div>
+      </section>
 
       <section class="card opts">
         <div class="opt">

@@ -7,7 +7,7 @@ import { noteName } from './transpose.js';
 import { fmtTimePrecise } from './player-logic.js';
 import {
   History, QUALITY_OPTIONS, countLabel, deleteAt, labelFromPicker, mergeWith, moveEnd, moveStart,
-  pickerFromLabel, qualityLabel, replaceAll, setLabelAt, splitAt,
+  pickerFromLabel, qualityLabel, replaceAll, setLabelAt, snapSegments, splitAt,
 } from './edit-logic.js';
 
 const SAVE_DELAY_MS = 800;
@@ -29,6 +29,7 @@ const $ = (id) => document.getElementById(id);
  * @param {(t:number)=>void} ctx.seekTo
  * @param {(a:number,b:number)=>void} ctx.setLoop
  * @param {()=>any[]|null} ctx.autoSegs
+ * @param {()=>number[]} ctx.beats  waktu ketukan (detik) untuk "rapatkan ke ketukan"
  * @param {()=>void} ctx.onSaved
  */
 export function createEditor(ctx) {
@@ -245,6 +246,12 @@ export function createEditor(ctx) {
 
   $('undoBtn').addEventListener('click', undo);
   $('redoBtn').addEventListener('click', redo);
+  $('snapBtn').addEventListener('click', () => {
+    const r = snapSegments(ctx.getSegs(), ctx.beats(), 0.15);
+    if (!r.changed) return ctx.toast('Tidak ada batas chord yang perlu dirapatkan.');
+    apply(r.segs); // satu langkah riwayat: bisa diurungkan
+    ctx.toast(`${r.changed} batas chord dirapatkan ke ketukan. Urungkan bila kurang pas.`);
+  });
   $('resetAutoBtn').addEventListener('click', () => {
     const auto = ctx.autoSegs();
     if (!auto) return ctx.toast('Tidak ada hasil mesin untuk dikembalikan.');

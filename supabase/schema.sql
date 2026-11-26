@@ -18,12 +18,14 @@ create table if not exists public.songs (
   error        text,
   detector     text,                      -- detector analisis terakhir
   sheet        jsonb check (sheet is null or jsonb_typeof(sheet) = 'object'),  -- lembar chord: {v, lyrics, times}
+  beats        jsonb check (beats is null or jsonb_typeof(beats) = 'object'),  -- ketukan: {v, bpm, meter, phase, beats:[detik]}
   created_at   timestamptz not null default now(),
   updated_at   timestamptz not null default now()
 );
 
 -- Untuk project yang dibuat dari versi skema lama:
 alter table public.songs add column if not exists sheet jsonb check (sheet is null or jsonb_typeof(sheet) = 'object');
+alter table public.songs add column if not exists beats jsonb check (beats is null or jsonb_typeof(beats) = 'object');
 
 create index if not exists songs_created_idx on public.songs (created_at desc);
 

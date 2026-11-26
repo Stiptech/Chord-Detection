@@ -118,6 +118,25 @@ export function barLines(chords, show = (l) => l) {
   return lines;
 }
 
+const BARS_PER_LINE = 4;
+
+/**
+ * Baris birama dari data ketukan: `| C | G | Am F | • |`, empat birama per baris.
+ * Birama yang ikut = titik tengahnya jatuh di [t0, t1). `•` = chord bertahan dari birama sebelumnya
+ * (kecuali birama pertama bagian ini, yang selalu menyebut chordnya). `bars` dari barChords() di beats.js.
+ * @returns {string[]} kosong bila tidak ada birama di rentang itu
+ */
+export function barLinesFromBars(bars, t0, t1, show = (l) => l) {
+  const inside = bars.filter((b) => { const mid = (b.start + b.end) / 2; return mid >= t0 && mid < t1; });
+  const cells = inside.map((b, i) => {
+    if (b.hold && i > 0) return '•';
+    return b.chords.length ? b.chords.map(show).join(' ') : '–';
+  });
+  const lines = [];
+  for (let i = 0; i < cells.length; i += BARS_PER_LINE) lines.push(`| ${cells.slice(i, i + BARS_PER_LINE).join(' | ')} |`);
+  return lines;
+}
+
 /**
  * Susun lembar. Mengembalikan blok berurutan:
  *   {kind:'section', name}
@@ -126,9 +145,10 @@ export function barLines(chords, show = (l) => l) {
  * Baris yang belum punya waktu tetap tampil (tanpa chord) dengan synced:false.
  * @param {ReturnType<typeof resolveTimes>} items
  * @param {{start:number,end:number,label:string}[]} segs chord terurut
- * @param {{show?:(label:string)=>string, endTime?:number}} [opts] show = transpose/ejaan; endTime = akhir lagu
+ * @param {{show?:(label:string)=>string, endTime?:number, bars?:ReturnType<typeof import('./beats.js').barChords>}} [opts]
+ *   show = transpose/ejaan; endTime = akhir lagu; bars = birama (bila ada, bagian tanpa lirik memakai palang birama sungguhan)
  */
-export function layoutSheet(items, segs, { show = (l) => l, endTime } = {}) {
+export function layoutSheet(items, segs, { show = (l) => l, endTime, bars = [] } = {}) {
   const songEnd = endTime ?? segs.at(-1)?.end ?? 0;
   // waktu mulai item berikutnya yang bernilai-waktu & lebih lambat, sebagai batas akhir item ini
   const endOf = (i) => {
@@ -146,7 +166,8 @@ export function layoutSheet(items, segs, { show = (l) => l, endTime } = {}) {
       if (isChordOnly(items, i)) {
         const synced = Number.isFinite(it.t);
         const chords = synced ? activeChords(segs, it.t, endOf(i)) : [];
-        blocks.push({ kind: 'bars', lines: barLines(chords, show), synced });
+        const real = synced && bars.length ? barLinesFromBars(bars, it.t, endOf(i), show) : [];
+        blocks.push({ kind: 'bars', lines: real.length ? real : barLines(chords, show), synced });
       }
       return;
     }

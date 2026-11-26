@@ -7,6 +7,12 @@ import { spellingForKey, transposeChord, estimateKey, keyName } from './transpos
 import { findSegmentIndex, nextChordIndex, loopJump, fmtTime, clamp } from './player-logic.js';
 import { diffMarks } from './edit-logic.js';
 import { createEditor } from './editor.js';
+import {
+  barChords, barIndexAt, bpmFromBeats, buildGrid, doubleTempo, halveTempo, pickPhase,
+} from './beats.js';
+import { countIn, createMetronome } from './rhythm.js';
+import { analyzeBeats } from './analysis.js';
+import { decodeAudio } from './audio.js';
 import { h } from './dom.js';
 
 const api = createApi(supabase);
@@ -26,7 +32,10 @@ const st = {
   transpose: 0, capo: 0, spelling: 'auto',
   editing: false, compareOn: false, version: 'auto', selected: null,
   raf: 0, lastUserScroll: 0, wakeLock: null, urlRetries: 0,
+  beats: null, bars: [], barMode: false, barBoxes: [], barIdx: -2, countInOn: false, counting: null, beatSaveTimer: 0,
 };
+const METERS = [[3, '3'], [4, '4'], [6, '6']];
+const metro = createMetronome(audio, () => (st.beats ? { beats: st.beats.beats, meter: st.beats.meter, phase: st.beats.phase } : null));
 
 // ---------- util ----------
 
@@ -48,11 +57,12 @@ function loadPrefs() {
     st.transpose = clamp(Number(p.transpose) || 0, -6, 6);
     st.capo = clamp(Number(p.capo) || 0, 0, 11);
     if (SPELLINGS.some(([v]) => v === p.spelling)) st.spelling = p.spelling;
+    st.countInOn = !!p.countIn;
   } catch { /* penyimpanan browser mungkin diblokir: pakai bawaan */ }
 }
 function savePrefs() {
   try {
-    localStorage.setItem(prefsKey(), JSON.stringify({ transpose: st.transpose, capo: st.capo, spelling: st.spelling }));
+    localStorage.setItem(prefsKey(), JSON.stringify({ transpose: st.transpose, capo: st.capo, spelling: st.spelling, countIn: st.countInOn }));
   } catch { /* abaikan */ }
 }
 
@@ -122,8 +132,10 @@ function refreshLabels() {
   document.body.classList.toggle('editing', st.editing);
   $('dockNow').hidden = !st.editing; // 'Sekarang: X' di dock hanya saat mode edit
   decorate();
+  refreshBarLabels();
   if (st.compareOn) renderCompare();
   st.idx = -2; // paksa perbarui panggung
+  st.barIdx = -2;
   syncUI();
 }
 
@@ -139,6 +151,7 @@ function syncUI() {
   if (!st.seeking) $('seek').value = String(t);
   $('curTime').textContent = fmtTime(t);
   if (st.compareOn) moveCompareHead(t);
+  syncBars(t);
 
   const idx = findSegmentIndex(st.segs, t);
   if (idx === st.idx) return;
@@ -161,6 +174,137 @@ function syncUI() {
 function seekTo(t) {
   audio.currentTime = clamp(t, 0, duration() || t);
   syncUI();
+}
+
+// ---------- ketukan & birama ----------
+
+function recomputeBars() {
+  const b = st.beats;
+  st.bars = b?.beats?.length > 1 ? barChords(buildGrid(b.beats, b.meter, b.phase), st.segs) : [];
+}
+
+const barText = (bar) => (bar.hold ? '•' : bar.chords.length ? bar.chords.map(show).join(' ') : '–');
+
+function buildBarTimeline() {
+  const tl = $('timeline');
+  tl.replaceChildren();
+  st.barBoxes = st.bars.map((bar) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.setAttribute('role', 'listitem');
+    b.className = 'tl-box bar' + (bar.hold ? ' hold' : '') + (bar.n === 0 ? ' downbeat0' : '');
+    b.append(document.createElement('strong'), document.createElement('small'));
+    b.addEventListener('click', () => { st.lastUserScroll = 0; seekTo(bar.start + 0.001); });
+    tl.append(b);
+    return b;
+  });
+  refreshBarLabels();
+}
+
+function refreshBarLabels() {
+  if (!st.barMode) return;
+  st.barBoxes.forEach((b, i) => {
+    const bar = st.bars[i];
+    b.firstChild.textContent = barText(bar);
+    b.lastChild.textContent = bar.n === 0 ? 'awal' : `bar ${bar.n}`;
+    b.style.minWidth = `${Math.max(76, 40 + 46 * Math.max(1, bar.hold ? 1 : bar.chords.length))}px`;
+  });
+}
+
+function syncBars(t) {
+  if (!st.barMode) return;
+  const bi = barIndexAt(st.bars, t);
+  if (bi === st.barIdx) return;
+  st.barIdx = bi;
+  st.barBoxes.forEach((b, i) => b.classList.toggle('on', i === bi));
+  const box = st.barBoxes[bi];
+  if (box && Date.now() - st.lastUserScroll >= USER_SCROLL_PAUSE_MS) {
+    const tl = $('timeline');
+    tl.scrollTo({ left: box.offsetLeft - (tl.clientWidth - box.offsetWidth) / 2, behavior: 'smooth' });
+  }
+}
+
+function setBarMode(on) {
+  if (on && !st.bars.length) { toast('Belum ada data ketukan. Ketuk "Hitung ketukan".'); on = false; }
+  if (on && st.compareOn) setCompare(false);
+  st.barMode = on;
+  st.barIdx = -2;
+  $('barToggle').setAttribute('aria-pressed', String(on));
+  if (on) buildBarTimeline(); else buildTimeline();
+  refreshLabels();
+}
+
+function renderRhythm() {
+  const b = st.beats;
+  $('rhythmCard').classList.toggle('has-beats', !!b);
+  $('barToggle').hidden = !b;
+  $('snapBtn').hidden = !b;
+  $('beatCalc').textContent = b ? 'Hitung ulang' : 'Hitung ketukan';
+  if (!b) { $('beatInfo').textContent = 'Belum dihitung'; return; }
+  const bpm = Math.round(bpmFromBeats(b.beats) * 10) / 10;
+  $('beatInfo').textContent = `${bpm} BPM · ${b.meter} ketukan per birama · ${st.bars.length} birama`;
+  buildSegmented($('meterSeg'), METERS, b.meter, setMeter);
+  $('metroBtn').setAttribute('aria-pressed', String(metro.on));
+  $('countInBtn').setAttribute('aria-pressed', String(st.countInOn));
+  $('countInBtn').textContent = `Hitung mundur ${b.meter} ketukan`;
+}
+
+function commitBeats(patch) {
+  st.beats = { ...st.beats, ...patch };
+  recomputeBars();
+  if (st.barMode) { st.barIdx = -2; buildBarTimeline(); syncBars(audio.currentTime || 0); }
+  renderRhythm();
+  clearTimeout(st.beatSaveTimer);
+  st.beatSaveTimer = setTimeout(() => {
+    api.saveBeats(st.song.id, st.beats).catch((e) => toast(humanizeError(e)));
+  }, 700);
+}
+
+function setMeter(meter) {
+  commitBeats({ meter, phase: pickPhase(st.beats.beats, st.segs, meter).phase });
+}
+function shiftPhase(d) {
+  const { meter, phase } = st.beats;
+  commitBeats({ phase: (phase + d + meter) % meter });
+}
+function changeTempoOctave(dir) {
+  const src = st.beats.beats;
+  if (dir < 0 && src.length < 8) return toast('Ketukan terlalu sedikit untuk dibagi dua.');
+  const beats = dir > 0 ? doubleTempo(src) : halveTempo(src);
+  commitBeats({ beats, bpm: Math.round(bpmFromBeats(beats) * 10) / 10, phase: pickPhase(beats, st.segs, st.beats.meter).phase });
+}
+
+async function calcBeats() {
+  const btn = $('beatCalc');
+  btn.disabled = true;
+  try {
+    btn.textContent = 'Mengunduh audio…';
+    const dec = await decodeAudio(await api.downloadAudio(st.song));
+    btn.textContent = 'Menghitung…';
+    const beats = await analyzeBeats(dec.samples, dec.sampleRate, st.segs);
+    await api.saveBeats(st.song.id, beats);
+    st.beats = beats;
+    recomputeBars();
+    if (st.barMode) buildBarTimeline();
+    renderRhythm();
+    toast(`Ketukan ditemukan: ${beats.bpm} BPM.`);
+  } catch (e) {
+    toast(humanizeError(e));
+    renderRhythm();
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+/** Loop dari birama yang sedang berbunyi sepanjang `count` birama. */
+function loopBars(count) {
+  const bi = Math.max(0, barIndexAt(st.bars, audio.currentTime || 0));
+  const first = st.bars[bi], last = st.bars[Math.min(st.bars.length - 1, bi + count - 1)];
+  if (!first) return;
+  st.loopA = first.start;
+  st.loopB = last.end;
+  updateLoopInfo();
+  toast(`Loop ${last === first ? 'birama ' + first.n : `birama ${first.n}–${last.n}`}. Tekan Putar.`);
 }
 
 // ---------- bandingkan hasil mesin vs koreksi ----------
@@ -219,6 +363,7 @@ function moveCompareHead(t, follow = true) {
 
 function setCompare(on) {
   if (on && !st.autoSegs) { toast('Tidak ada hasil mesin untuk dibandingkan.'); return; }
+  if (on && st.barMode) setBarMode(false);
   st.compareOn = on;
   $('compareToggle').setAttribute('aria-pressed', String(on));
   $('compare').hidden = !on;
@@ -251,6 +396,7 @@ const editor = createEditor({
   duration,
   setLoop: (a, b) => { st.loopA = a; st.loopB = b; updateLoopInfo(); },
   autoSegs: () => st.autoSegs,
+  beats: () => st.beats?.beats ?? [],
   onSaved: () => {
     st.version = 'corrected';
     $('versionInfo').textContent = 'Versi koreksi';
@@ -259,9 +405,11 @@ const editor = createEditor({
 
 async function setEditing(on) {
   if (on === st.editing) return;
+  if (on && st.barMode) setBarMode(false);
   st.editing = on;
   $('editToggle').setAttribute('aria-pressed', String(on));
   for (const id of ['trDown', 'trUp', 'trReset', 'capoDown', 'capoUp']) $(id).disabled = on; // transpose/capo tidak berlaku saat edit
+  $('barToggle').disabled = on;
   if (on) {
     editor.enter();
     st.selected = null;
@@ -270,6 +418,8 @@ async function setEditing(on) {
     await editor.exit(); // tunggu penyimpanan terakhir
     st.selected = null;
     st.key = estimateKey(st.segs); // key bisa berubah setelah koreksi
+    recomputeBars();
+    renderRhythm();
   }
   refreshLabels();
 }
@@ -306,8 +456,16 @@ async function setWakeLock(on) {
 }
 
 async function togglePlay() {
+  if (st.counting) { st.counting.cancel(); st.counting = null; $('playBtn').textContent = '▶ Putar'; return; }
   if (!audio.paused) { audio.pause(); return; }
   try {
+    if (st.countInOn && st.beats) {
+      $('playBtn').textContent = '… hitung mundur';
+      st.counting = countIn(metro.engine, st.beats.meter, st.beats.bpm, st.speed);
+      const go = await st.counting.promise;
+      st.counting = null;
+      if (!go) return;
+    }
     applySpeed();
     await audio.play();
   } catch {
@@ -415,6 +573,20 @@ function wireControls() {
   $('capoDown').addEventListener('click', () => changeShift(() => { st.capo = clamp(st.capo - 1, 0, 11); }));
   $('capoUp').addEventListener('click', () => changeShift(() => { st.capo = clamp(st.capo + 1, 0, 11); }));
 
+  $('barToggle').addEventListener('click', () => setBarMode(!st.barMode));
+  $('beatCalc').addEventListener('click', () => {
+    if (st.beats && !confirm('Hitung ulang ketukan? Pengaturan birama dan downbeat yang sudah kamu ubah akan diganti.')) return;
+    calcBeats();
+  });
+  $('tempoHalf').addEventListener('click', () => changeTempoOctave(-1));
+  $('tempoDouble').addEventListener('click', () => changeTempoOctave(1));
+  $('phaseDown').addEventListener('click', () => shiftPhase(-1));
+  $('phaseUp').addEventListener('click', () => shiftPhase(1));
+  $('metroBtn').addEventListener('click', () => { metro.set(!metro.on); $('metroBtn').setAttribute('aria-pressed', String(metro.on)); });
+  $('countInBtn').addEventListener('click', () => { st.countInOn = !st.countInOn; savePrefs(); renderRhythm(); });
+  $('loopBar1').addEventListener('click', () => loopBars(1));
+  $('loopBar4').addEventListener('click', () => loopBars(4));
+
   $('editToggle').addEventListener('click', () => setEditing(!st.editing));
   $('compareToggle').addEventListener('click', () => setCompare(!st.compareOn));
 
@@ -456,6 +628,8 @@ function fail(message) {
     st.segs = [...segments].sort((a, b) => a.start - b.start);
     st.autoSegs = auto?.length ? [...auto].sort((a, b) => a.start - b.start) : null;
     st.key = estimateKey(st.segs);
+    st.beats = song.beats?.beats?.length > 1 ? song.beats : null;
+    recomputeBars();
     loadPrefs();
     $('songTitle').textContent = song.name;
     $('sheetLink').href = `sheet.html?id=${song.id}`;
@@ -466,6 +640,7 @@ function fail(message) {
     wireControls();
     updateSteppers();
     updateLoopInfo();
+    renderRhythm();
     $('totTime').textContent = fmtTime(song.duration_sec || 0);
     $('seek').max = String(song.duration_sec || 100);
     $('stateMsg').hidden = true;
