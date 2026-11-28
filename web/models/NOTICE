@@ -1,0 +1,19 @@
+Berkas bobot: btc-large-voca.bin
+
+Bobot model BTC ("Bi-directional Transformer for Chord Recognition"), diekspor ke fp16 dari checkpoint resmi
+test/btc_model_large_voca.pt oleh scripts/export_btc_weights.py.
+
+Sumber : https://github.com/jayg996/BTC-ISMIR19
+Makalah: J. Park, K. Choi, S. Jeon, D. Kim, J. Park, "A Bi-Directional Transformer for Musical Chord Recognition", ISMIR 2019.
+Lisensi: kode BTC berlisensi MIT (di bawah). Bobot pretrained dilaporkan berlisensi CC-BY-NC-SA 4.0 oleh pihak ketiga
+         (belum diverifikasi penulis asli): atribusi diwajibkan, hanya untuk pemakaian NONKOMERSIAL, turunan dibagikan
+         dengan lisensi yang sama. Berkas ini adalah turunan (kuantisasi fp16 + tata letak biner berbeda).
+Perubahan: bobot dikonversi ke float16 dan konvolusi disusun ulang; web/js/btc.js adalah porting JavaScript dari btc_model.py
+           dan utils/transformer_modules.py.
+
+MIT License
+Copyright (c) 2019 Jonggwon Park
+Izin diberikan, tanpa biaya, kepada siapa pun yang memperoleh salinan perangkat lunak ini untuk memakainya tanpa batasan
+(termasuk menyalin, mengubah, menggabungkan, menerbitkan, mendistribusikan), dengan syarat pemberitahuan hak cipta di atas
+dan pemberitahuan izin ini disertakan. Perangkat lunak disediakan "APA ADANYA", tanpa jaminan apa pun.
+(Teks asli MIT lengkap: https://github.com/jayg996/BTC-ISMIR19/blob/master/LICENSE)

@@ -154,7 +154,7 @@ cd web; python -m http.server 8000                                  # jalankan l
 Model pretrained **BTC** (Bi-directional Transformer, Park dkk. ISMIR 2019, kosakata 170 chord) kini jalan **di browser**, tanpa server dan tanpa pustaka ML:
 - `web/js/cqt.js`: CQT 144 bin (24 per oktaf), tiruan `librosa.cqt` (sub-sampling rekursif, pemotongan 10 dtk, log-magnitudo). Cocok dengan librosa: selisih rata-rata ~0,002 (log) pada lagu nyata.
 - `web/js/btc.js`: inferensi transformer murni JavaScript (8 lapis, lebar 128, ±2,9 juta bobot). Cocok dengan PyTorch (selisih logit < 0,01 dengan bobot fp32; argmax 100% sama).
-- `web/models/btc-large-voca.bin` (±6 MB, bobot fp16). Diunduh sekali saat pertama dipakai, lalu di-cache service worker.
+- `web/models/btc-large-voca.bin` (±6 MB, bobot fp16). Diunduh lewat jaringan setiap analisis BTC (browser meng-cache; service worker menyimpan salinan sebagai cadangan offline). **Berkas ini ikut tersedia publik** di repo dan situs; lihat `web/models/NOTICE`.
 - Saat lagu dianalisis (unggah / "Analisis ulang"), BTC ikut dijalankan setelah detector sendiri dan ketukan; hasilnya disimpan sebagai versi label **`btc`** (otomatis ikut dibandingkan dengan `corrected` di Statistik). Kegagalan BTC tidak menggagalkan analisis. Matikan lewat `BTC_ON_ANALYZE` di `web/js/config.js`.
 - Lagu lama: di mode edit, tombol **Hitung hasil BTC** menjalankannya di browser; setelah ada hasil, tombol berubah jadi **Muat hasil BTC** (mengganti segmen yang diedit; bisa diurungkan).
 - Kecepatan: ±10 dtk untuk lagu 4 menit di laptop; di HP beberapa kali lebih lama (belum diukur).

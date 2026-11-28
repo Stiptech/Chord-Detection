@@ -174,6 +174,9 @@ async function analyzeAndSave(song, audio) {
       render();
       await api.saveBeats(song.id, await analyzeBeats(audio.samples, audio.sampleRate, segments));
     } catch { /* bisa dihitung ulang dari halaman pemutar */ }
+    patchSong(await api.updateSong(song.id, { status: 'ready', detector: 'baseline', error: null }));
+    state.labels.delete(song.id);
+    render(); // lagu sudah bisa dipakai; BTC di bawah hanya pelengkap (lama di HP, tab bisa saja ditutup)
     if (BTC_ON_ANALYZE) {
       try { // sama: pelengkap, tidak boleh menggagalkan analisis
         busy.text = 'Detektor saraf (BTC)…';
@@ -186,8 +189,6 @@ async function analyzeAndSave(song, audio) {
         if (btc.length) await api.saveLabels(song.id, 'btc', btc);
       } catch { /* bisa dijalankan ulang dari mode edit di pemutar */ }
     }
-    patchSong(await api.updateSong(song.id, { status: 'ready', detector: 'baseline', error: null }));
-    state.labels.delete(song.id);
   } catch (e) {
     const message = humanizeError(e);
     try { patchSong(await api.updateSong(song.id, { status: 'error', error: message })); } catch { /* jaringan mati: abaikan */ }
