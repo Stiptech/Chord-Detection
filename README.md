@@ -150,6 +150,12 @@ cd web; python -m http.server 8000                                  # jalankan l
   hanya bila logika evaluasi atau kosakata chord berubah.
 - **Kualitas tes:** tes paritas diuji dengan mutasi (rumus sengaja dirusak → tes gagal). Tes sinyal sintetis bersih tidak cukup untuk detector (lihat penyetelan di atas).
 
+## Sus berlebihan pada detector sendiri (diperbaiki 2026-11-28, berdasarkan pengamatan pengguna)
+Pemusik sering tidak menekan chord sus; nada lewat atau sisa dengung chord sebelumnya (mis. C berdengung saat pindah ke G) terbaca sebagai `Gsus4`.
+Dua perubahan di `web/js/config.js`: penalti sus2/sus4 `-0.06 -> -0.10` dan `minSusSec = 1.5` (sus lebih pendek dari 1,5 dtk diserap tetangga terpanjang).
+Pada tiga lagu asli: waktu berlabel sus turun dari 14-30% menjadi ~4-17%, dan sus sesaat (< 1,5 dtk) menjadi 0. BTC membaca sus hanya 0,4-4%, jadi masih ada selisih.
+Kecocokan dengan BTC tidak membaik (dan BTC bukan kebenaran): nilai ini hanya dipilih dari pengamatan, bukan terbukti; ubah bila perlu. Hanya analisis BARU yang terpengaruh ("Analisis ulang" untuk lagu lama; versi `corrected` tidak disentuh).
+
 ## Detector saraf BTC (otomatis di browser)
 Model pretrained **BTC** (Bi-directional Transformer, Park dkk. ISMIR 2019, kosakata 170 chord) kini jalan **di browser**, tanpa server dan tanpa pustaka ML:
 - `web/js/cqt.js`: CQT 144 bin (24 per oktaf), tiruan `librosa.cqt` (sub-sampling rekursif, pemotongan 10 dtk, log-magnitudo). Cocok dengan librosa: selisih rata-rata ~0,002 (log) pada lagu nyata.

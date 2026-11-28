@@ -199,3 +199,17 @@ test('onProgress dipanggil dan berakhir di 1', () => {
   assert.equal(seen.at(-1), 1);
   assert.ok(seen.every((p, i) => i === 0 || p >= seen[i - 1]));
 });
+
+test('mergeShortSegments: sus sesaat diserap tetangga, sus panjang dan chord biasa tetap', () => {
+  const segs = [
+    { start: 0, end: 4, label: 'C' },
+    { start: 4, end: 4.8, label: 'Gsus4' }, // 0.8 dtk: di bawah batas sus (1.5), di atas batas umum (0.3)
+    { start: 4.8, end: 8, label: 'G' },
+    { start: 8, end: 8.8, label: 'F' }, // chord biasa 0.8 dtk: tetap
+    { start: 8.8, end: 12, label: 'Dsus2' }, // sus panjang: tetap
+  ];
+  const minLenOf = (s) => (s.label.includes('sus') ? 1.5 : 0.3);
+  const out = mergeShortSegments(segs, 0.3, minLenOf);
+  assert.deepEqual(out.map((s) => s.label), ['C', 'G', 'F', 'Dsus2']);
+  assert.equal(out[0].end, 4.8); // diserap tetangga yang lebih panjang (C 4 dtk vs G 3,2 dtk)
+});

@@ -31,7 +31,10 @@ export const DEFAULTS = {
   // Penalti kecil untuk kualitas "kompleks" agar triad tidak kalah oleh sus/7th hanya karena
   // nada pad/melodi ikut tertangkap. Negatif = lebih sulit terpilih. Geser sesuai seleramu:
   // lebih negatif = lebih banyak chord polos, lebih dekat ke nol = lebih banyak sus/7th terdeteksi.
-  qualityBias: { '': 0, m: 0, sus2: -0.06, sus4: -0.06, 7: -0.04, maj7: -0.04, m7: -0.04 },
+  qualityBias: { '': 0, m: 0, sus2: -0.10, sus4: -0.10, 7: -0.04, maj7: -0.04, m7: -0.04 },
+  // Segmen sus yang lebih pendek dari ini (detik) diserap tetangganya: sus sesaat biasanya sisa dengung/nada lewat, bukan chord yang dimainkan.
+  // 0 = nonaktif.
+  minSusSec: 1.5,
   // Frame hening selalu N (dipaksa di chromaToProbs). Pada frame berbunyi, bias negatif ini membuat N
   // hanya terpilih bila chroma benar-benar datar. Antara -1 dan -0.4 hasilnya sama pada lagu uji.
   noChordBias: -0.4,

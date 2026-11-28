@@ -151,14 +151,14 @@ function joinEqual(segs) {
   return out;
 }
 
-/** Segmen terpendek yang < minLen diserap tetangga yang lebih panjang; ulangi. */
-export function mergeShortSegments(segs, minLen) {
+/** Segmen terpendek yang < minLen diserap tetangga yang lebih panjang; ulangi. `minLenOf(seg)` boleh memberi batas berbeda per segmen. */
+export function mergeShortSegments(segs, minLen, minLenOf = () => minLen) {
   let out = joinEqual(segs.map((s) => ({ ...s })));
   const dur = (s) => s.end - s.start;
   while (out.length > 1) {
     let i = -1;
     for (let k = 0; k < out.length; k++) {
-      if (dur(out[k]) < minLen && (i < 0 || dur(out[k]) < dur(out[i]))) i = k;
+      if (dur(out[k]) < minLenOf(out[k]) && (i < 0 || dur(out[k]) < dur(out[i]))) i = k;
     }
     if (i < 0) break;
     let j;
@@ -189,5 +189,7 @@ export function detect(samples, sampleRate, opts = {}) {
   const probs = chromaToProbs(chroma, numFrames, tpl, cfg);
   const states = viterbiLoop(probs, numFrames, tpl.numStates, cfg.transitionLoop);
   const segs = statesToSegments(states, tpl.labels, cfg.hopLength, sampleRate, duration);
-  return mergeShortSegments(segs, cfg.minSegmentSec);
+  // sus yang hanya sebentar biasanya bukan chord yang dimainkan (nada penyambung/sisa dengung chord sebelumnya): serap ke tetangga
+  const minLenOf = (s) => (s.label.includes('sus') ? Math.max(cfg.minSegmentSec, cfg.minSusSec) : cfg.minSegmentSec);
+  return mergeShortSegments(segs, cfg.minSegmentSec, minLenOf);
 }
