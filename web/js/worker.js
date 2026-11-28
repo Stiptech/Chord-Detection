@@ -1,10 +1,16 @@
 // Web Worker: menjalankan detector dan pelacak ketukan di thread terpisah supaya halaman tidak macet.
 import { detect } from './baseline.js';
 import { analyzeBeatGrid } from './beats.js';
+import { detectBtc } from './btc.js';
 
-self.onmessage = (e) => {
+self.onmessage = async (e) => {
   const { task = 'chords', samples, sampleRate, segments } = e.data;
   try {
+    if (task === 'btc') {
+      const segments = await detectBtc(samples, sampleRate, (p) => self.postMessage({ type: 'progress', p }));
+      self.postMessage({ type: 'done', segments });
+      return;
+    }
     if (task === 'beats') {
       self.postMessage({ type: 'done', beats: analyzeBeatGrid(samples, sampleRate, segments || []) });
       return;

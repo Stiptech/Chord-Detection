@@ -30,6 +30,7 @@ const $ = (id) => document.getElementById(id);
  * @param {(a:number,b:number)=>void} ctx.setLoop
  * @param {()=>any[]|null} ctx.autoSegs
  * @param {()=>any[]|null} ctx.btcSegs  hasil detector saraf BTC (versi label `btc`), bila ada
+ * @param {(onProgress:(p:number)=>void)=>Promise<void>} ctx.computeBtc  jalankan BTC di browser untuk lagu ini (lagu lama yang belum punya hasil)
  * @param {()=>number[]} ctx.beats  waktu ketukan (detik) untuk "rapatkan ke ketukan"
  * @param {()=>void} ctx.onSaved
  */
@@ -247,9 +248,27 @@ export function createEditor(ctx) {
 
   $('undoBtn').addEventListener('click', undo);
   $('redoBtn').addEventListener('click', redo);
-  $('loadBtcBtn').addEventListener('click', () => {
-    const btc = ctx.btcSegs();
-    if (!btc) return ctx.toast('Tidak ada hasil BTC untuk lagu ini.');
+  /** Tombol BTC punya dua keadaan: sudah ada hasil -> muat; belum -> hitung dulu di browser. */
+  function renderBtcButton() {
+    $('loadBtcBtn').hidden = false;
+    $('loadBtcBtn').textContent = ctx.btcSegs() ? 'Muat hasil BTC (model saraf)' : 'Hitung hasil BTC (±30 dtk)';
+  }
+  $('loadBtcBtn').addEventListener('click', async () => {
+    let btc = ctx.btcSegs();
+    if (!btc) {
+      const btn = $('loadBtcBtn');
+      btn.disabled = true;
+      try {
+        await ctx.computeBtc((p) => { btn.textContent = `Menghitung BTC… ${Math.round(p * 100)}%`; });
+        ctx.toast('Hasil BTC siap. Tekan "Muat hasil BTC" untuk memakainya.');
+      } catch (e) {
+        ctx.toast(`BTC gagal: ${e?.message || e}`);
+      } finally {
+        btn.disabled = false;
+        renderBtcButton();
+      }
+      return;
+    }
     if (!confirm('Ganti semua chord yang sedang diedit dengan hasil BTC? Kamu masih bisa membatalkannya dengan Urungkan.')) return;
     sel = null;
     apply(btc.map((s) => ({ ...s })), null);
@@ -283,10 +302,7 @@ export function createEditor(ctx) {
       sel = null;
       history.reset(ctx.getSegs());
       $('editBar').hidden = false;
-      const hasBtc = !!ctx.btcSegs();
-      $('loadBtcBtn').hidden = false; // selalu tampil supaya jelas; BTC dijalankan terpisah (bukan otomatis), jadi tidak semua lagu punya
-      $('loadBtcBtn').disabled = !hasBtc;
-      $('loadBtcBtn').textContent = hasBtc ? 'Muat hasil BTC (model saraf)' : 'Hasil BTC belum ada untuk lagu ini';
+      renderBtcButton(); // selalu tampil; lagu lama tanpa hasil BTC bisa menghitungnya di sini
       renderBar(); renderSave(); renderPane();
     },
     async exit() {

@@ -11,7 +11,7 @@ import {
   barChords, barIndexAt, bpmFromBeats, buildGrid, doubleTempo, halveTempo, pickPhase,
 } from './beats.js';
 import { countIn, createMetronome } from './rhythm.js';
-import { analyzeBeats } from './analysis.js';
+import { analyzeBeats, analyzeBtc } from './analysis.js';
 import { decodeAudio } from './audio.js';
 import { h } from './dom.js';
 
@@ -398,6 +398,14 @@ const editor = createEditor({
   autoSegs: () => st.autoSegs,
   beats: () => st.beats?.beats ?? [],
   btcSegs: () => st.btcSegs,
+  async computeBtc(onProgress) {
+    onProgress(0);
+    const dec = await decodeAudio(await api.downloadAudio(st.song));
+    const segs = await analyzeBtc(dec.samples, dec.sampleRate, onProgress);
+    if (!segs.length) throw new Error('hasil kosong');
+    await api.saveLabels(st.song.id, 'btc', segs);
+    st.btcSegs = segs;
+  },
   onSaved: () => {
     st.version = 'corrected';
     $('versionInfo').textContent = 'Versi koreksi';

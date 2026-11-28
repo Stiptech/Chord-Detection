@@ -1,6 +1,7 @@
 // Jalankan analisis (chord, ketukan) di Web Worker; kalau worker modul tidak tersedia, jatuh ke thread utama.
 import { detect } from './baseline.js';
 import { analyzeBeatGrid } from './beats.js';
+import { detectBtc } from './btc.js';
 
 /**
  * @param {Float32Array} samples mono
@@ -17,6 +18,12 @@ export function analyzeSamples(samples, sampleRate, onProgress = () => {}) {
 export function analyzeBeats(samples, sampleRate, segments = []) {
   return runTask({ task: 'beats', segments }, samples, sampleRate, () => {}, (m) => m.beats,
     () => analyzeBeatGrid(samples, sampleRate, segments));
+}
+
+/** Detector saraf BTC (model ±6 MB diunduh sekali, lalu di-cache). Lambat: ±10 dtk per 4 menit lagu di laptop, lebih lama di HP. */
+export function analyzeBtc(samples, sampleRate, onProgress = () => {}) {
+  return runTask({ task: 'btc' }, samples, sampleRate, onProgress, (m) => m.segments,
+    () => detectBtc(samples, sampleRate, onProgress));
 }
 
 function runTask(extra, samples, sampleRate, onProgress, pick, fallback) {
@@ -47,7 +54,7 @@ function runTask(extra, samples, sampleRate, onProgress, pick, fallback) {
 function runOnMainThread(fn) {
   return new Promise((resolve, reject) => {
     setTimeout(() => {
-      try { resolve(fn()); } catch (e) { reject(e); }
+      Promise.resolve().then(fn).then(resolve, reject);
     }, 0);
   });
 }

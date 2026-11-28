@@ -150,25 +150,29 @@ cd web; python -m http.server 8000                                  # jalankan l
   hanya bila logika evaluasi atau kosakata chord berubah.
 - **Kualitas tes:** tes paritas diuji dengan mutasi (rumus sengaja dirusak → tes gagal). Tes sinyal sintetis bersih tidak cukup untuk detector (lihat penyetelan di atas).
 
-## Detector saraf BTC (prototipe offline, tidak ikut aplikasi)
-`scripts/btc_prototype.py` menjalankan model pretrained **BTC** (Bi-directional Transformer, Park dkk. ISMIR 2019, kosakata 170 chord) pada satu berkas audio dan menulis
-segmen chord dalam notasi proyek. Hasilnya disimpan sebagai versi label **`btc`**, jadi otomatis ikut dibandingkan dengan `corrected` di halaman Statistik.
-Di mode edit ada tombol **Muat hasil BTC** (mengganti segmen yang sedang diedit; bisa diurungkan) untuk memulai koreksi dari hasil BTC.
+## Detector saraf BTC (otomatis di browser)
+Model pretrained **BTC** (Bi-directional Transformer, Park dkk. ISMIR 2019, kosakata 170 chord) kini jalan **di browser**, tanpa server dan tanpa pustaka ML:
+- `web/js/cqt.js`: CQT 144 bin (24 per oktaf), tiruan `librosa.cqt` (sub-sampling rekursif, pemotongan 10 dtk, log-magnitudo). Cocok dengan librosa: selisih rata-rata ~0,002 (log) pada lagu nyata.
+- `web/js/btc.js`: inferensi transformer murni JavaScript (8 lapis, lebar 128, ±2,9 juta bobot). Cocok dengan PyTorch (selisih logit < 0,01 dengan bobot fp32; argmax 100% sama).
+- `web/models/btc-large-voca.bin` (±6 MB, bobot fp16). Diunduh sekali saat pertama dipakai, lalu di-cache service worker.
+- Saat lagu dianalisis (unggah / "Analisis ulang"), BTC ikut dijalankan setelah detector sendiri dan ketukan; hasilnya disimpan sebagai versi label **`btc`** (otomatis ikut dibandingkan dengan `corrected` di Statistik). Kegagalan BTC tidak menggagalkan analisis. Matikan lewat `BTC_ON_ANALYZE` di `web/js/config.js`.
+- Lagu lama: di mode edit, tombol **Hitung hasil BTC** menjalankannya di browser; setelah ada hasil, tombol berubah jadi **Muat hasil BTC** (mengganti segmen yang diedit; bisa diurungkan).
+- Kecepatan: ±10 dtk untuk lagu 4 menit di laptop; di HP beberapa kali lebih lama (belum diukur).
+- Verifikasi end-to-end pada lagu nyata (243 dtk): label BTC JavaScript sama dengan BTC Python di 100% titik uji (bobot fp16).
 
-Cara pakai (venv terpisah, bukan venv proyek; butuh Python dengan roda torch):
+Membuat ulang berkas bobot dan fixture (venv terpisah dengan torch CPU, numpy, librosa, pyyaml; kode + bobot dari https://github.com/jayg996/BTC-ISMIR19, kode MIT):
 ```powershell
-python -m venv btc_venv; .\btc_venv\Scripts\python.exe -m pip install torch --index-url https://download.pytorch.org/whl/cpu
-.\btc_venv\Scripts\python.exe -m pip install numpy librosa pyyaml mir_eval soundfile
-# kode + bobot (test/btc_model_large_voca.pt) dari https://github.com/jayg996/BTC-ISMIR19 (kode MIT)
-.\btc_venv\Scripts\python.exe -I scripts\btc_prototype.py --btc-dir <folder BTC-ISMIR19> --audio lagu22k.wav --out segs_btc.json
+python -m venv btc_venv; .tc_venv\Scripts\python.exe -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+.tc_venv\Scripts\python.exe -m pip install numpy librosa pyyaml mir_eval soundfile
+.tc_venv\Scripts\python.exe -I scripts\export_btc_weights.py --btc-dir <folder BTC-ISMIR19> --out web\modelstc-large-voca.bin --fixture js-testsixturestc_model.json
+.tc_venv\Scripts\python.exe -I scripts\make_cqt_fixture.py js-testsixtures\cqt.json
 ```
-Lalu simpan `segs_btc.json` sebagai label `btc` (baris `label_versions`, `version='btc'`). Bobot dimuat dengan `weights_only=True`. **Lisensi:** kode MIT; bobot dilaporkan CC-BY-NC-SA 4.0
-oleh pihak ketiga (belum diverifikasi penulis asli), jadi pakai hanya untuk keperluan pribadi nonkomersial. Waktu jalan: ~1 menit CPU untuk lagu 4 menit.
+`scripts/btc_prototype.py` tetap ada sebagai acuan PyTorch (`--btc-dir --audio --out`) untuk membandingkan hasil.
+**Lisensi:** kode BTC MIT; bobot dilaporkan CC-BY-NC-SA 4.0 oleh pihak ketiga (belum diverifikasi penulis asli), jadi hanya untuk pemakaian pribadi nonkomersial.
 
-**Hasil awal pada lagu asli (belum ada koreksi, jadi BELUM terukur akurasinya):** BTC membaca 74% waktu sebagai mayor polos, hanya 2,7% sus; detector JS/Python membaca ~25-27% sus
-(banyak `Gsus2` di mana BTC membaca `G`). Chord teratas BTC (D, A, G, Bm) adalah I-V-IV-vi di D, pola khas lagu ini, sedangkan detector sendiri cenderung berlebihan membaca sus2. Kesepakatan
-BTC vs detector sendiri rendah (root 64%), vs sesama detector sendiri tinggi (76%): itu tanda perbedaan sistematis, bukan siapa yang benar. Pembuktian butuh lagu yang dikoreksi penuh.
-Belum diporting ke browser (butuh ONNX + CQT di JS); hanya dilakukan bila terbukti jelas lebih baik.
+**Hasil awal pada lagu asli (akurasi BELUM terukur, belum ada koreksi penuh):** BTC membaca 74% waktu sebagai mayor polos, hanya 2,7% sus; detector sendiri membaca ~25-27% sus
+(banyak `Gsus2` di mana BTC membaca `G`). Chord teratas BTC (D, A, G, Bm) adalah I-V-IV-vi di D, pola khas lagu ini. Kesepakatan BTC vs detector sendiri rendah (root 64%): tanda
+perbedaan sistematis, bukan siapa yang benar. Pembuktian butuh lagu yang dikoreksi penuh; bandingkan di halaman Statistik.
 
 ## Belum terbukti
 - **Pelacak ketukan** baru diuji pada satu lagu asli (+ sinyal sintetis); tebakan birama dan oktaf tempo belum teruji pada banyak lagu.

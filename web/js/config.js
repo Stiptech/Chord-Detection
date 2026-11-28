@@ -1,5 +1,8 @@
 // Parameter detector baseline (versi JavaScript). Disetel pada rekaman nyata (lagu worship, 4 menit);
 // lihat README "Penyetelan detector" untuk alasan tiap nilai.
+// Jalankan detektor saraf BTC otomatis saat lagu dianalisis (menambah ±10-40 dtk). Hasilnya jadi versi label `btc`.
+export const BTC_ON_ANALYZE = true;
+
 export const DEFAULTS = {
   sampleRate: 22050,
   hopLength: 2048, // ~93 ms per frame

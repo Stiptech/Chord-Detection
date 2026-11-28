@@ -15,7 +15,7 @@ Spesifikasi awal ada di `chord-finder-prompt.md` (sebagian sudah usang: arsitekt
 - Jangan push ke GitHub atau mengubah arsitektur tanpa persetujuan (push ke `main` memicu deploy Netlify).
 
 ## Peta berkas `web/js/`
-`app.js` daftar lagu · `player.js` pemutar · `beats.js` ketukan/tempo/birama (DSP klasik) + `rhythm.js` metronom/hitung-mundur · `sheet.js` + `sheet-logic.js` lembar chord (lirik + ketuk-sinkron) · `editor.js` + `edit-logic.js` koreksi · `stats.js` + `evaluate.js` statistik · `baseline.js`, `chroma.js`, `fft.js`,
+`app.js` daftar lagu · `player.js` pemutar · `cqt.js` + `btc.js` detector saraf BTC · `beats.js` ketukan/tempo/birama (DSP klasik) + `rhythm.js` metronom/hitung-mundur · `sheet.js` + `sheet-logic.js` lembar chord (lirik + ketuk-sinkron) · `editor.js` + `edit-logic.js` koreksi · `stats.js` + `evaluate.js` statistik · `baseline.js`, `chroma.js`, `fft.js`,
 `config.js` detector · `labels.js` .lab/Harte/validasi · `transpose.js` transpose + key · `audio.js`, `analysis.js`, `worker.js` dekode + Web Worker ·
 `api.js`, `supabase.js`, `supabase-config.js` data · `dom.js` pembuat elemen · `pwa.js` + `sw.js` service worker.
 Logika murni dipisah dari DOM (`edit-logic.js`, `player-logic.js`, `evaluate.js`, `transpose.js`, `sheet-logic.js`) supaya bisa dites di Node.
@@ -40,5 +40,5 @@ Logika murni dipisah dari DOM (`edit-logic.js`, `player-logic.js`, `evaluate.js`
 ## Format data
 - `.lab`: `start<TAB>end<TAB>chord`. Versi label per lagu: `auto` (tidak pernah ditimpa koreksi), nama detector, `corrected`.
 - `songs.beats` = `{v, bpm, meter, phase, confidence, beats:[detik]}`; dihitung di worker saat analisis (gagal tidak menggagalkan analisis), bisa dihitung ulang dari pemutar. Tempo ambigu satu oktaf: UI punya ÷2/×2.
-- Detector saraf BTC: prototipe offline `scripts/btc_prototype.py` (venv terpisah; hasil = label `btc`; tombol "Muat hasil BTC" di mode edit). Akurasi vs detector sendiri belum terukur (butuh lagu terkoreksi). Bobot dilaporkan nonkomersial.
+- Detector saraf BTC jalan di browser (`web/js/cqt.js` + `btc.js`, bobot fp16 `web/models/btc-large-voca.bin`, paritas diuji vs librosa/PyTorch); otomatis saat analisis (`BTC_ON_ANALYZE`), hasil = label `btc`; di mode edit: "Hitung/Muat hasil BTC". `scripts/btc_prototype.py` = acuan PyTorch, `export_btc_weights.py` membuat bobot. Akurasi vs detector sendiri belum terukur (butuh lagu terkoreksi). Bobot dilaporkan nonkomersial.
 - Notasi: `C Dm Dsus2 Dsus4 C7 Cmaj7 Am7 Cadd9 G/B N`. Konversi Harte: `web/js/labels.js` dan `app/labels.py`.

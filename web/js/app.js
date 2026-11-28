@@ -2,7 +2,8 @@
 import { supabase } from './supabase.js';
 import { createApi, humanizeError } from './api.js';
 import { decodeAudio, sha256Hex } from './audio.js';
-import { analyzeBeats, analyzeSamples } from './analysis.js';
+import { analyzeBeats, analyzeBtc, analyzeSamples } from './analysis.js';
+import { BTC_ON_ANALYZE } from './config.js';
 import { formatLab, parseLab, validateSegments } from './labels.js';
 import { REQUIRE_LOGIN } from './supabase-config.js';
 import { h } from './dom.js';
@@ -173,6 +174,18 @@ async function analyzeAndSave(song, audio) {
       render();
       await api.saveBeats(song.id, await analyzeBeats(audio.samples, audio.sampleRate, segments));
     } catch { /* bisa dihitung ulang dari halaman pemutar */ }
+    if (BTC_ON_ANALYZE) {
+      try { // sama: pelengkap, tidak boleh menggagalkan analisis
+        busy.text = 'Detektor saraf (BTC)…';
+        render();
+        const btc = await analyzeBtc(audio.samples, audio.sampleRate, (p) => {
+          busy.progress = p;
+          busy.text = `Detektor saraf (BTC)… ${Math.round(p * 100)}%`;
+          render();
+        });
+        if (btc.length) await api.saveLabels(song.id, 'btc', btc);
+      } catch { /* bisa dijalankan ulang dari mode edit di pemutar */ }
+    }
     patchSong(await api.updateSong(song.id, { status: 'ready', detector: 'baseline', error: null }));
     state.labels.delete(song.id);
   } catch (e) {
