@@ -283,7 +283,10 @@ export function createEditor(ctx) {
       sel = null;
       history.reset(ctx.getSegs());
       $('editBar').hidden = false;
-      $('loadBtcBtn').hidden = !ctx.btcSegs();
+      const hasBtc = !!ctx.btcSegs();
+      $('loadBtcBtn').hidden = false; // selalu tampil supaya jelas; BTC dijalankan terpisah (bukan otomatis), jadi tidak semua lagu punya
+      $('loadBtcBtn').disabled = !hasBtc;
+      $('loadBtcBtn').textContent = hasBtc ? 'Muat hasil BTC (model saraf)' : 'Hasil BTC belum ada untuk lagu ini';
       renderBar(); renderSave(); renderPane();
     },
     async exit() {
